@@ -6,7 +6,7 @@ import './styles.css';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import decorder from 'three/examples/js/libs/draco/draco_decoder';
-import house from 'url:./assets/srt10.glb';
+import house from './assets/srt10.glb';
 
 let particleCount = 3000;
 let particleSpread = 1000;
