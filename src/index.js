@@ -1,11 +1,15 @@
 import Stats from 'stats.js';
 import * as THREE from 'three';
-import { noiseDetail, noiseSeed } from './math/noise';
+import { noise, noiseDetail, noiseSeed } from './math/noise';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import './styles.css';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
+import decorder from 'three/examples/js/libs/draco/draco_decoder';
+import house from './assets/srt10.glb';
 
-const particleCount = 3000;
-const particleSpread = 1000;
+let particleCount = 3000;
+let particleSpread = 1000;
 
 let scene, camera, renderer;
 let container,
@@ -26,6 +30,7 @@ let container,
   mouseX = 0,
   mouseY = 0,
   windowHalfX,
+  material,
   windowHalfY,
   cameraZ,
   fogHex,
@@ -41,6 +46,42 @@ init();
 animate();
 
 function init() {
+  // load resource
+
+  // Instantiate a loader
+  const loader = new GLTFLoader();
+
+  // Optional: Provide a DRACOLoader instance to decode compressed mesh data
+  const dracoLoader = new DRACOLoader();
+  dracoLoader.setDecoderPath(decorder);
+  loader.setDRACOLoader(dracoLoader);
+
+  loader.load(
+    // resource URL
+    house,
+    // called when the resource is loaded
+    function (gltf) {
+      scene.add(gltf.scene);
+
+      gltf.scene; // THREE.Group
+      gltf.scene.scale.set(0.025, 0.025, 0.025);
+      gltf.scene.rotateY(180);
+      gltf.scene.translateZ(-100);
+      gltf.scenes; // Array<THREE.Group>
+      gltf.asset; // Object
+    },
+    // called while loading is progressing
+    function (xhr) {
+      console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
+    },
+    // called when loading has errors
+    function (error) {
+      console.log(error);
+    }
+  );
+
+  // load resource end
+
   HEIGHT = window.innerHeight;
   WIDTH = window.innerWidth;
   windowHalfX = WIDTH / 2;
@@ -53,7 +94,7 @@ function init() {
 
   cameraZ = farPlane / 3;
   fogHex = 0x000000;
-  fogDensity = 0.0007;
+  fogDensity = 0.001;
 
   camera = new THREE.PerspectiveCamera(
     fieldOfView,
@@ -79,47 +120,89 @@ function init() {
   controls.enableZoom = true;
   controls.enablePan = false;
   controls.zoomSpeed = 0.05;
-  controls.enableRotate = false;
+  controls.enableRotate = true;
   controls.dampingFactor = 0.001;
 
   // Orbit controls end
 
-  geometry = new THREE.BufferGeometry();
+  // Point cloud ------
 
-  let vertices = new Float32Array(particleCount);
+  // geometry = new THREE.BufferGeometry();
+
+  // let vertices = new Float32Array(particleCount);
+
+  // for (let i = 0; i < particleCount; i++) {
+  //   let randPos = Math.random() * particleSpread - particleSpread / 2;
+  //   vertices[i] = Math.round(randPos);
+  // }
+
+  // geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 4));
+
+  // parameters = [
+  //   [[1, 1, 0.5], 5],
+  //   [[0.95, 1, 0.5], 4],
+  //   [[0.9, 1, 0.5], 3],
+  //   [[0.85, 1, 0.5], 2],
+  //   [[0.8, 1, 0.5], 1],
+  // ];
+  // parameterCount = parameters.length;
+
+  // for (i = 0; i < parameterCount; i++) {
+  //   color = parameters[i][0];
+  //   size = parameters[i][1];
+
+  //   materials[i] = new THREE.PointsMaterial({
+  //     size: size,
+  //   });
+
+  //   particles = new THREE.Points(geometry, materials[i]);
+
+  //   particles.rotation.x = Math.random() * 6;
+  //   particles.rotation.y = Math.random() * 6;
+  //   particles.rotation.z = Math.random() * 6;
+
+  //   scene.add(particles);
+  // }
+
+  // Object cloud ------
+  let particleCount = 1000;
+  let particleSpread = 1500;
 
   for (let i = 0; i < particleCount; i++) {
-    let randPos = Math.random() * particleSpread - particleSpread / 2;
-    vertices[i] = Math.round(randPos);
-  }
+    let geometry = new THREE.SphereGeometry(2, 16, 16);
 
-  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 4));
+    const displacementMap = new THREE.TextureLoader().load(
+      'https://i.pinimg.com/originals/b9/ff/b1/b9ffb16bcbb8e4e091b939488f4cdf8a.jpg'
+    );
 
-  parameters = [
-    [[1, 1, 0.5], 5],
-    [[0.95, 1, 0.5], 4],
-    [[0.9, 1, 0.5], 3],
-    [[0.85, 1, 0.5], 2],
-    [[0.8, 1, 0.5], 1],
-  ];
-  parameterCount = parameters.length;
-
-  for (i = 0; i < parameterCount; i++) {
-    color = parameters[i][0];
-    size = parameters[i][1];
-
-    materials[i] = new THREE.PointsMaterial({
-      size: size,
+    material = new THREE.MeshPhongMaterial({
+      color: 'white',
+      wireframe: false,
     });
 
-    particles = new THREE.Points(geometry, materials[i]);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
 
-    particles.rotation.x = Math.random() * 6;
-    particles.rotation.y = Math.random() * 6;
-    particles.rotation.z = Math.random() * 6;
+    mesh.translateX(noise(i) * particleSpread - particleSpread / 2);
+    mesh.translateY(noise(i + 1) * particleSpread - particleSpread / 2);
+    mesh.translateZ(noise(i + 2) * particleSpread - particleSpread / 2);
 
-    scene.add(particles);
+    scene.add(mesh);
   }
+
+  // lights
+
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+  directionalLight.castShadow = true;
+  directionalLight.shadow.radius = 8;
+  directionalLight.position.set(-200, 200, 100);
+  scene.add(directionalLight);
+
+  const light = new THREE.AmbientLight('rgb(40,40,40)');
+  scene.add(light);
+
+  // end lights
 
   renderer = new THREE.WebGLRenderer();
   renderer.setPixelRatio(window.devicePixelRatio);
