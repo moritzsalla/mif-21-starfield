@@ -63,12 +63,12 @@ function init() {
     function (gltf) {
       scene.add(gltf.scene);
 
-      gltf.scene; // THREE.Group
+      gltf.scene;
+      gltf.scene.translateY(-30);
       gltf.scene.scale.set(0.025, 0.025, 0.025);
       gltf.scene.rotateY(180);
-      gltf.scene.translateZ(-100);
-      gltf.scenes; // Array<THREE.Group>
-      gltf.asset; // Object
+      gltf.scenes;
+      gltf.asset;
     },
     // called while loading is progressing
     function (xhr) {
@@ -87,7 +87,7 @@ function init() {
   windowHalfX = WIDTH / 2;
   windowHalfY = HEIGHT / 2;
 
-  fieldOfView = 75;
+  fieldOfView = 50;
   aspectRatio = WIDTH / HEIGHT;
   nearPlane = 1;
   farPlane = 3000;
@@ -119,57 +119,17 @@ function init() {
   controls.autoRotate = false;
   controls.enableZoom = true;
   controls.enablePan = false;
-  controls.zoomSpeed = 0.05;
+  controls.zoomSpeed = 0.1;
   controls.enableRotate = true;
   controls.dampingFactor = 0.001;
 
-  // Orbit controls end
+  // Object cloud
 
-  // Point cloud ------
-
-  // geometry = new THREE.BufferGeometry();
-
-  // let vertices = new Float32Array(particleCount);
-
-  // for (let i = 0; i < particleCount; i++) {
-  //   let randPos = Math.random() * particleSpread - particleSpread / 2;
-  //   vertices[i] = Math.round(randPos);
-  // }
-
-  // geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 4));
-
-  // parameters = [
-  //   [[1, 1, 0.5], 5],
-  //   [[0.95, 1, 0.5], 4],
-  //   [[0.9, 1, 0.5], 3],
-  //   [[0.85, 1, 0.5], 2],
-  //   [[0.8, 1, 0.5], 1],
-  // ];
-  // parameterCount = parameters.length;
-
-  // for (i = 0; i < parameterCount; i++) {
-  //   color = parameters[i][0];
-  //   size = parameters[i][1];
-
-  //   materials[i] = new THREE.PointsMaterial({
-  //     size: size,
-  //   });
-
-  //   particles = new THREE.Points(geometry, materials[i]);
-
-  //   particles.rotation.x = Math.random() * 6;
-  //   particles.rotation.y = Math.random() * 6;
-  //   particles.rotation.z = Math.random() * 6;
-
-  //   scene.add(particles);
-  // }
-
-  // Object cloud ------
-  let particleCount = 1000;
-  let particleSpread = 1500;
+  let particleCount = 1500;
+  let particleSpread = 2000;
 
   for (let i = 0; i < particleCount; i++) {
-    let geometry = new THREE.SphereGeometry(2, 16, 16);
+    let geometry = new THREE.SphereGeometry(1, 4, 4);
 
     const displacementMap = new THREE.TextureLoader().load(
       'https://i.pinimg.com/originals/b9/ff/b1/b9ffb16bcbb8e4e091b939488f4cdf8a.jpg'
@@ -206,15 +166,12 @@ function init() {
 
   let video = document.getElementById('video');
   video.play();
-  video.muted = false;
-  video.addEventListener('play', function () {
-    this.currentTime = 3;
-  });
 
   let videoTexture = new THREE.VideoTexture(video);
   let videoGeometry = new THREE.BoxGeometry(320, 240, 10);
   let videoMaterial = new THREE.MeshLambertMaterial({ map: videoTexture });
   let videoMesh = new THREE.Mesh(videoGeometry, videoMaterial);
+  videoMesh.translateZ(-500);
   scene.add(videoMesh);
 
   // end cinema screen
