@@ -1,0 +1,14 @@
+{
+  "name": "mif-starfield",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "moritzsalla <moritz.salla@hotmail.de>",
+  "license": "MIT",
+  "scripts": {
+    "dev": "parcel <your entry file>",
+    "build": "parcel build <your entry file>"
+  },
+  "devDependencies": {
+    "prettier": "^2.2.1"
+  }
+}
