@@ -2,7 +2,7 @@ Arguments:
   /usr/local/bin/node /usr/local/Cellar/yarn/1.22.10/libexec/bin/yarn.js add url:.
 
 PATH: 
-  /var/folders/lf/3md2nths66932kgj5t3d8f0m0000gn/T/yarn--1615411326193-0.5044258839881264:/Users/moritzsalla/Documents/GitHub/mif-starfield/node_modules/.bin:/Users/moritzsalla/.config/yarn/link/node_modules/.bin:/usr/local/libexec/lib/node_modules/npm/bin/node-gyp-bin:/usr/local/lib/node_modules/npm/bin/node-gyp-bin:/usr/local/bin/node_modules/npm/bin/node-gyp-bin:/Users/moritzsalla/.pyenv/shims:/usr/local/opt/openjdk/bin:/Users/moritzsalla/anaconda3/bin:/Users/moritzsalla/anaconda3/condabin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/Library/Apple/usr/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/Users/moritzsalla/.cargo/bin:/usr/ucb
+  /var/folders/lf/3md2nths66932kgj5t3d8f0m0000gn/T/yarn--1615413754084-0.7991579664971467:/Users/moritzsalla/Documents/GitHub/mif-starfield/node_modules/.bin:/Users/moritzsalla/.config/yarn/link/node_modules/.bin:/usr/local/libexec/lib/node_modules/npm/bin/node-gyp-bin:/usr/local/lib/node_modules/npm/bin/node-gyp-bin:/usr/local/bin/node_modules/npm/bin/node-gyp-bin:/Users/moritzsalla/.pyenv/shims:/usr/local/opt/openjdk/bin:/Users/moritzsalla/anaconda3/bin:/Users/moritzsalla/anaconda3/condabin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/Library/Apple/usr/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/Users/moritzsalla/.cargo/bin:/usr/ucb
 
 Yarn version: 
   1.22.10

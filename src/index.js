@@ -120,7 +120,7 @@ function init() {
   controls.enableZoom = true;
   controls.enablePan = false;
   controls.zoomSpeed = 0.1;
-  controls.enableRotate = true;
+  controls.enableRotate = false;
   controls.dampingFactor = 0.001;
 
   // Object cloud
