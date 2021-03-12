@@ -4,6 +4,6 @@ Depending on which package manager you chose, use the terminal to `cd` into the 
 
 Once installation is complete, `yarn dev` or `npm run dev` will spin up a development server at `http://localhost:1234`.
 
-In order to run a production build, run `yarn build` or `npm build`.
+To run a production build, run `yarn build` or `npm build`. This will build to the `dist` folder.
 
 All necessary variables to customize the scene are located at the top of `index.js`.
