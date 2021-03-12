@@ -6,7 +6,7 @@ import './styles.css';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import decorder from 'three/examples/js/libs/draco/draco_decoder';
-import house from './assets/srt10.glb';
+import houseGLB from './assets/srt10.glb';
 
 let particleCount = 3000;
 let particleSpread = 1000;
@@ -39,6 +39,23 @@ let container,
   parameterCount,
   particles;
 
+let video = {
+  position: new THREE.Vector3(0, 0, -400),
+  cameraOffset: 220, // margin between camera end point and movie canvas
+};
+
+let house = {
+  position: new THREE.Vector3(0, -30, 0),
+  scale: 0.05,
+  rotation: 280,
+};
+
+let colors = {
+  whitePoint: 'rgb(255, 255, 255)',
+  shadow: 'rgb(40, 40, 40)',
+  blackPoint: 'rgb(0, 0, 0)',
+};
+
 noiseSeed(Math.random());
 noiseDetail(100);
 
@@ -57,24 +74,19 @@ function init() {
   loader.setDRACOLoader(dracoLoader);
 
   loader.load(
-    // resource URL
-    house,
-    // called when the resource is loaded
+    houseGLB,
     function (gltf) {
       scene.add(gltf.scene);
-
       gltf.scene;
-      gltf.scene.translateY(-30);
-      gltf.scene.scale.set(0.025, 0.025, 0.025);
-      gltf.scene.rotateY(180);
+      gltf.scene.translateY(house.position.y);
+      gltf.scene.scale.set(house.scale, house.scale, house.scale);
+      gltf.scene.rotateY(house.rotation);
       gltf.scenes;
       gltf.asset;
     },
-    // called while loading is progressing
     function (xhr) {
-      console.log(Math.round((xhr.loaded / xhr.total) * 100) + '% loaded');
+      console.log(Math.ceil((xhr.loaded / xhr.total) * 100) + '% loaded');
     },
-    // called when loading has errors
     function (error) {
       console.log(error);
     }
@@ -92,8 +104,8 @@ function init() {
   nearPlane = 1;
   farPlane = 3000;
 
-  cameraZ = farPlane / 3;
-  fogHex = 0x000000;
+  cameraZ = farPlane / 2;
+  fogHex = colors.blackPoint;
   fogDensity = 0.001;
 
   camera = new THREE.PerspectiveCamera(
@@ -104,6 +116,20 @@ function init() {
   );
   camera.position.z = cameraZ;
 
+  document.addEventListener(
+    'mousemove',
+    (event) => {
+      let mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+      let mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      camera.position.x += mouseX * controls.dampingFactor;
+      camera.position.y += mouseY * controls.dampingFactor;
+    },
+    true
+  );
+
+  // some other stuff
+
   scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(fogHex, fogDensity);
 
@@ -112,20 +138,9 @@ function init() {
   document.body.style.margin = 0;
   document.body.style.overflow = 'hidden';
 
-  // Orbit controls !
-
-  controls = new OrbitControls(camera, container);
-  controls.enableDamping = true;
-  controls.autoRotate = false;
-  controls.enableZoom = true;
-  controls.enablePan = false;
-  controls.zoomSpeed = 0.1;
-  controls.enableRotate = false;
-  controls.dampingFactor = 0.001;
-
   // Object cloud
 
-  let particleCount = 1500;
+  let particleCount = 2000;
   let particleSpread = 2000;
 
   for (let i = 0; i < particleCount; i++) {
@@ -136,7 +151,7 @@ function init() {
     );
 
     material = new THREE.MeshPhongMaterial({
-      color: 'white',
+      color: colors.whitePoint,
       wireframe: false,
     });
 
@@ -159,28 +174,22 @@ function init() {
   directionalLight.position.set(-200, 200, 100);
   scene.add(directionalLight);
 
-  const light = new THREE.AmbientLight('rgb(40,40,40)');
+  const light = new THREE.AmbientLight(colors.shadow);
   scene.add(light);
 
   // cinema screen
 
-  let video = document.getElementById('video');
-  video.play();
+  let videoElem = document.getElementById('video');
+  videoElem.play();
 
-  let videoTexture = new THREE.VideoTexture(video);
+  let videoTexture = new THREE.VideoTexture(videoElem);
   let videoGeometry = new THREE.BoxGeometry(320, 240, 10);
   let videoMaterial = new THREE.MeshLambertMaterial({ map: videoTexture });
   let videoMesh = new THREE.Mesh(videoGeometry, videoMaterial);
-  videoMesh.translateZ(-500);
+  videoMesh.translateZ(video.position.z);
   scene.add(videoMesh);
 
-  // end cinema screen
-
-  renderer = new THREE.WebGLRenderer();
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(WIDTH, HEIGHT);
-
-  container.appendChild(renderer.domElement);
+  // stats
 
   stats = new Stats();
   stats.domElement.style.position = 'absolute';
@@ -188,8 +197,34 @@ function init() {
   stats.domElement.style.left = '0.5rem';
   container.appendChild(stats.domElement);
 
-  /* Event Listeners */
+  // Orbit controls !
+
+  controls = new OrbitControls(camera, container);
+  controls.enableDamping = true;
+  controls.autoRotate = false;
+  controls.enableZoom = true;
+  controls.enablePan = false;
+  controls.zoomSpeed = 0.5;
+  controls.enableRotate = false;
+  controls.dampingFactor = 0.5;
+  controls.target = video.position;
+  controls.maxDistance = cameraZ;
+  controls.minDistance = video.cameraOffset;
+
+  controls.touches = {
+    ONE: THREE.TOUCH.DOLLY_PAN,
+    TWO: THREE.TOUCH.DOLLY_PAN,
+  };
+
+  // everything else
+
   window.addEventListener('resize', onWindowResize, false);
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(WIDTH, HEIGHT);
+
+  container.appendChild(renderer.domElement);
 }
 
 function animate() {
@@ -202,23 +237,12 @@ function animate() {
 function render() {
   var time = Date.now() * 0.00005;
 
-  camera.lookAt(scene.position);
-
   for (i = 0; i < scene.children.length; i++) {
     var object = scene.children[i];
 
     if (object instanceof THREE.PointCloud) {
       object.rotation.y = time * (i < 4 ? i + 1 : -(i + 1));
     }
-  }
-
-  for (i = 0; i < materials.length; i++) {
-    // random colors
-    // color = parameters[i][0];
-    // h = ((360 * (color[0] + time)) % 360) / 360;
-    // materials[i].color.setHSL(h, color[1], color[2]);
-
-    materials[i].color.setRGB(200, 200, 200);
   }
 
   renderer.render(scene, camera);
