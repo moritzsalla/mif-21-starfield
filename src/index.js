@@ -10,6 +10,7 @@ import Stats from 'stats.js';
 
 /* --- Changeable variables --- */
 
+const showDebugInfo = false; // display frame counter in top left corner. 60fps is great, anything above 24 is acceptable.
 const zoomSpeed = 0.3;
 const particleCount = 3000; // adding more particles impacts performance
 const particleSpread = 1500;
@@ -17,28 +18,28 @@ const fogDensity = 0.0005;
 const fieldOfView = 50;
 const cameraZ = 2000; // how high up is the camera's starting position?
 const cameraY = 0; // how high up is the camera's starting position?
-
-const video = {
-  position: new THREE.Vector3(0, 0, -400), // x, y, and z position of the video canvas
-  cameraOffset: 220, // margin between camera end point and movie canvas
-};
-
-const house = {
-  position: new THREE.Vector3(0, -30, 0), // x, y, and z position of the custom model
-  scale: 0.05,
-  rotation: 280, // which way the custom model is facing (y axis)
-};
+const randomStarSpawn = false; // changing this to "true" will make stars spawn in random positions every time the website is loaded
+const particlesShouldSpin = true; // turning this off might improve performance. impacts performance.
+const mouseParallax = true; // makes the camera drift with mouse position, creating parallax effect. impacts performance.
+const mouseParallaxEase = 0.25; // changes subtlety of effect
 
 const colors = {
   whitePoint: 'rgb(255, 255, 255)', // stars
   shadow: 'rgb(50, 50, 50)', // fog and shadows
   blackPoint: 'rgb(0, 0, 0)', // background
 };
-
-const randomStarSpawn = false; // changing this to "true" will make stars spawn in random positions every time the website is loaded
-const particlesShouldSpin = true; // turning this off might improve performance
-const mouseParallax = true; // makes the camera drift with mouse position, creating parallax effect
-const mouseParallaxEase = 0.25; // changes subtlety of effect
+const house = {
+  hidden: false, // display custom model?
+  position: new THREE.Vector3(0, -30, 0), // x, y, and z position of custom model
+  scale: 0.05,
+  rotation: 280, // which way the custom model is facing (y axis)
+};
+const video = {
+  position: new THREE.Vector3(0, 0, -400), // x, y, and z position of the video canvas
+  cameraOffset: 220, // margin between camera end point and movie canvas
+  height: 240, // it's best to make these your
+  width: 320,
+};
 
 /* --- Changeable variables end --- */
 
@@ -72,34 +73,41 @@ animate();
 function init() {
   /* --- Loading custom model --- */
 
-  const loader = new GLTFLoader();
+  if (!house.hidden) {
+    const loader = new GLTFLoader();
 
-  // Optional: Provide a DRACOLoader instance to decode compressed mesh data
-  const dracoLoader = new DRACOLoader();
-  dracoLoader.setDecoderPath(decorder);
-  loader.setDRACOLoader(dracoLoader);
+    // Optional: Provide a DRACOLoader instance to decode compressed mesh data
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath(decorder);
+    loader.setDRACOLoader(dracoLoader);
 
-  loader.load(
-    houseGLB,
-    function (gltf) {
-      gltf.scene.translateY(house.position.y);
-      gltf.scene.scale.set(house.scale, house.scale, house.scale);
-      gltf.scene.rotateY(house.rotation);
-      scene.add(gltf.scene);
+    loader.load(
+      houseGLB,
+      function (gltf) {
+        gltf.scene.translateY(house.position.y);
+        gltf.scene.scale.set(house.scale, house.scale, house.scale);
+        gltf.scene.rotateY(house.rotation);
+        scene.add(gltf.scene);
 
-      playButtonWrapper.style.cursor = 'pointer';
-      playButton.style.display = 'block';
-      playButton.innerHTML = 'Press to play';
-      loaded = true;
-    },
-    function (xhr) {
-      // console.log(Math.ceil((xhr.loaded / xhr.total) * 100) + '% loaded');
-      playButton.innerHTML = `Loading model…`;
-    },
-    function (error) {
-      console.error(error);
-    }
-  );
+        playButtonWrapper.style.cursor = 'pointer';
+        playButton.style.display = 'block';
+        playButton.innerHTML = 'Press to play';
+        loaded = true;
+      },
+      function (xhr) {
+        // console.log(Math.ceil((xhr.loaded / xhr.total) * 100) + '% loaded');
+        playButton.innerHTML = `Loading model…`;
+      },
+      function (error) {
+        console.error(error);
+      }
+    );
+  } else {
+    playButtonWrapper.style.cursor = 'pointer';
+    playButton.style.display = 'block';
+    playButton.innerHTML = 'Press to play';
+    loaded = true;
+  }
 
   /* --- camera --- */
 
@@ -194,7 +202,7 @@ function init() {
   };
 
   let videoTexture = new THREE.VideoTexture(videoElem);
-  let videoGeometry = new THREE.BoxGeometry(320, 240, 0.01);
+  let videoGeometry = new THREE.BoxGeometry(video.width, video.height, 0.01);
   let videoMaterial = new THREE.MeshLambertMaterial({ map: videoTexture });
   let videoMesh = new THREE.Mesh(videoGeometry, videoMaterial);
   videoMesh.translateZ(video.position.z);
@@ -202,11 +210,13 @@ function init() {
 
   /* --- frame rate stats. useful for debugging. --- */
 
-  stats = new Stats();
-  stats.domElement.style.position = 'absolute';
-  stats.domElement.style.top = '0.5rem';
-  stats.domElement.style.left = '0.5rem';
-  container.appendChild(stats.domElement);
+  if (showDebugInfo) {
+    stats = new Stats();
+    stats.domElement.style.position = 'absolute';
+    stats.domElement.style.top = '0.5rem';
+    stats.domElement.style.left = '0.5rem';
+    container.appendChild(stats.domElement);
+  }
 
   /* --- camera controls --- */
 
@@ -243,7 +253,7 @@ function animate() {
   requestAnimationFrame(animate);
   render();
   controls.update();
-  stats.update();
+  if (showDebugInfo) stats.update();
 }
 
 function render() {
