@@ -8,8 +8,13 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import decorder from 'three/examples/js/libs/draco/draco_decoder';
 import houseGLB from './assets/srt10.glb';
 
+let playButtonWrapper = document.querySelector('.play-button-wrapper');
+let playButton = document.getElementById('play-button');
+
 let particleCount = 3000;
 let particleSpread = 1000;
+
+let loaded = false;
 
 let scene, camera, renderer;
 let container,
@@ -52,12 +57,12 @@ let house = {
 
 let colors = {
   whitePoint: 'rgb(255, 255, 255)',
-  shadow: 'rgb(40, 40, 40)',
+  shadow: 'rgb(50, 50, 50)',
   blackPoint: 'rgb(0, 0, 0)',
 };
 
 noiseSeed(Math.random());
-noiseDetail(100);
+noiseDetail(10);
 
 init();
 animate();
@@ -83,9 +88,16 @@ function init() {
       gltf.scene.rotateY(house.rotation);
       gltf.scenes;
       gltf.asset;
+
+      playButtonWrapper.style.cursor = 'pointer';
+      playButton.style.display = 'block';
+      playButton.innerHTML = 'Press to play';
+      loaded = true;
     },
     function (xhr) {
-      console.log(Math.ceil((xhr.loaded / xhr.total) * 100) + '% loaded');
+      const percLoaded = Math.ceil((xhr.loaded / xhr.total) * 100);
+      console.log(percLoaded + '% loaded');
+      playButton.innerHTML = `Loading ${percLoaded}%`;
     },
     function (error) {
       console.log(error);
@@ -106,7 +118,7 @@ function init() {
 
   cameraZ = farPlane / 2;
   fogHex = colors.blackPoint;
-  fogDensity = 0.001;
+  fogDensity = 0.0005;
 
   camera = new THREE.PerspectiveCamera(
     fieldOfView,
@@ -116,17 +128,13 @@ function init() {
   );
   camera.position.z = cameraZ;
 
-  document.addEventListener(
-    'mousemove',
-    (event) => {
-      let mouseX = (event.clientX / window.innerWidth) * 2 - 1;
-      let mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+  document.addEventListener('mousemove', (event) => {
+    let mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+    let mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
 
-      camera.position.x += mouseX * controls.dampingFactor;
-      camera.position.y += mouseY * controls.dampingFactor;
-    },
-    true
-  );
+    camera.position.x += mouseX * 0.25;
+    camera.position.y += mouseY * 0.25;
+  });
 
   // some other stuff
 
@@ -140,11 +148,11 @@ function init() {
 
   // Object cloud
 
-  let particleCount = 2000;
-  let particleSpread = 2000;
+  let particleCount = 1500;
+  let particleSpread = 1500;
 
   for (let i = 0; i < particleCount; i++) {
-    let geometry = new THREE.SphereGeometry(1, 4, 4);
+    let geometry = new THREE.SphereGeometry(1, 3, 3);
 
     const displacementMap = new THREE.TextureLoader().load(
       'https://i.pinimg.com/originals/b9/ff/b1/b9ffb16bcbb8e4e091b939488f4cdf8a.jpg'
@@ -180,10 +188,16 @@ function init() {
   // cinema screen
 
   let videoElem = document.getElementById('video');
-  videoElem.play();
+
+  playButton.onclick = function () {
+    if (loaded) {
+      videoElem.play();
+      playButtonWrapper.style.display = 'none';
+    }
+  };
 
   let videoTexture = new THREE.VideoTexture(videoElem);
-  let videoGeometry = new THREE.BoxGeometry(320, 240, 10);
+  let videoGeometry = new THREE.BoxGeometry(320, 240, 0.01);
   let videoMaterial = new THREE.MeshLambertMaterial({ map: videoTexture });
   let videoMesh = new THREE.Mesh(videoGeometry, videoMaterial);
   videoMesh.translateZ(video.position.z);
@@ -204,17 +218,18 @@ function init() {
   controls.autoRotate = false;
   controls.enableZoom = true;
   controls.enablePan = false;
-  controls.zoomSpeed = 0.5;
+  controls.zoomSpeed = 0.3;
   controls.enableRotate = false;
-  controls.dampingFactor = 0.5;
+  controls.dampingFactor = 0.005;
+
+  controls.minAzimuthAngle = -Math.PI * 0.5;
+  controls.maxAzimuthAngle = Math.PI * 0.5;
+  controls.minPolarAngle = -Math.PI;
+  controls.maxPolarAngle = Math.PI;
+
   controls.target = video.position;
   controls.maxDistance = cameraZ;
   controls.minDistance = video.cameraOffset;
-
-  controls.touches = {
-    ONE: THREE.TOUCH.DOLLY_PAN,
-    TWO: THREE.TOUCH.DOLLY_PAN,
-  };
 
   // everything else
 
