@@ -1,76 +1,77 @@
-import Stats from 'stats.js';
+import './styles.css';
 import * as THREE from 'three';
 import { noise, noiseDetail, noiseSeed } from './math/noise';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import './styles.css';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import decorder from 'three/examples/js/libs/draco/draco_decoder';
 import houseGLB from './assets/srt10.glb';
+import Stats from 'stats.js';
 
-let playButtonWrapper = document.querySelector('.play-button-wrapper');
-let playButton = document.getElementById('play-button');
+/* --- Changeable variables --- */
 
-let particleCount = 3000;
-let particleSpread = 1000;
+const zoomSpeed = 0.3;
+const particleCount = 3000; // adding more particles impacts performance
+const particleSpread = 1500;
+const fogDensity = 0.0005;
+const fieldOfView = 50;
+const cameraZ = 2000; // how high up is the camera's starting position?
+const cameraY = 0; // how high up is the camera's starting position?
 
-let loaded = false;
+const video = {
+  position: new THREE.Vector3(0, 0, -400), // x, y, and z position of the video canvas
+  cameraOffset: 220, // margin between camera end point and movie canvas
+};
+
+const house = {
+  position: new THREE.Vector3(0, -30, 0), // x, y, and z position of the custom model
+  scale: 0.05,
+  rotation: 280, // which way the custom model is facing (y axis)
+};
+
+const colors = {
+  whitePoint: 'rgb(255, 255, 255)', // stars
+  shadow: 'rgb(50, 50, 50)', // fog and shadows
+  blackPoint: 'rgb(0, 0, 0)', // background
+};
+
+const randomStarSpawn = false; // changing this to "true" will make stars spawn in random positions every time the website is loaded
+const particlesShouldSpin = true; // turning this off might improve performance
+const mouseParallax = true; // makes the camera drift with mouse position, creating parallax effect
+const mouseParallaxEase = 0.25; // changes subtlety of effect
+
+/* --- Changeable variables end --- */
+
+const playButtonWrapper = document.querySelector('.play-button-wrapper');
+const playButton = document.getElementById('play-button');
+
+const particles = new THREE.Group();
 
 let scene, camera, renderer;
 let container,
   HEIGHT,
   WIDTH,
-  fieldOfView,
   aspectRatio,
+  windowHalfX,
+  windowHalfY,
   nearPlane,
   farPlane,
   stats,
-  geometry,
   controls,
   i,
-  h,
-  color,
-  size,
-  materials = [],
-  mouseX = 0,
-  mouseY = 0,
-  windowHalfX,
-  material,
-  windowHalfY,
-  cameraZ,
-  fogHex,
-  fogDensity,
-  parameters = {},
-  parameterCount,
-  particles;
+  material;
 
-let video = {
-  position: new THREE.Vector3(0, 0, -400),
-  cameraOffset: 220, // margin between camera end point and movie canvas
-};
+let loaded = false;
 
-let house = {
-  position: new THREE.Vector3(0, -30, 0),
-  scale: 0.05,
-  rotation: 280,
-};
-
-let colors = {
-  whitePoint: 'rgb(255, 255, 255)',
-  shadow: 'rgb(50, 50, 50)',
-  blackPoint: 'rgb(0, 0, 0)',
-};
-
-noiseSeed(Math.random());
+if (!randomStarSpawn) noiseSeed(120);
 noiseDetail(10);
 
 init();
 animate();
 
 function init() {
-  // load resource
+  /* --- Loading custom model --- */
 
-  // Instantiate a loader
   const loader = new GLTFLoader();
 
   // Optional: Provide a DRACOLoader instance to decode compressed mesh data
@@ -81,13 +82,10 @@ function init() {
   loader.load(
     houseGLB,
     function (gltf) {
-      scene.add(gltf.scene);
-      gltf.scene;
       gltf.scene.translateY(house.position.y);
       gltf.scene.scale.set(house.scale, house.scale, house.scale);
       gltf.scene.rotateY(house.rotation);
-      gltf.scenes;
-      gltf.asset;
+      scene.add(gltf.scene);
 
       playButtonWrapper.style.cursor = 'pointer';
       playButton.style.display = 'block';
@@ -95,30 +93,24 @@ function init() {
       loaded = true;
     },
     function (xhr) {
-      const percLoaded = Math.ceil((xhr.loaded / xhr.total) * 100);
-      console.log(percLoaded + '% loaded');
-      playButton.innerHTML = `Loading ${percLoaded}%`;
+      // console.log(Math.ceil((xhr.loaded / xhr.total) * 100) + '% loaded');
+      playButton.innerHTML = `Loading model…`;
     },
     function (error) {
-      console.log(error);
+      console.error(error);
     }
   );
 
-  // load resource end
+  /* --- camera --- */
 
   HEIGHT = window.innerHeight;
   WIDTH = window.innerWidth;
   windowHalfX = WIDTH / 2;
   windowHalfY = HEIGHT / 2;
 
-  fieldOfView = 50;
   aspectRatio = WIDTH / HEIGHT;
   nearPlane = 1;
   farPlane = 3000;
-
-  cameraZ = farPlane / 2;
-  fogHex = colors.blackPoint;
-  fogDensity = 0.0005;
 
   camera = new THREE.PerspectiveCamera(
     fieldOfView,
@@ -127,36 +119,33 @@ function init() {
     farPlane
   );
   camera.position.z = cameraZ;
+  camera.position.y = cameraY;
 
-  document.addEventListener('mousemove', (event) => {
-    let mouseX = (event.clientX / window.innerWidth) * 2 - 1;
-    let mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+  if (mouseParallax) {
+    document.addEventListener('mousemove', (event) => {
+      let mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+      let mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    camera.position.x += mouseX * 0.25;
-    camera.position.y += mouseY * 0.25;
-  });
+      camera.position.x += mouseX * mouseParallaxEase;
+      camera.position.y += mouseY * mouseParallaxEase;
+    });
+  }
 
-  // some other stuff
+  /* --- scene --- */
 
   scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(fogHex, fogDensity);
+  scene.background = colors.blackPoint;
+  scene.fog = new THREE.FogExp2(colors.blackPoint, fogDensity);
 
   container = document.createElement('div');
   document.body.appendChild(container);
   document.body.style.margin = 0;
   document.body.style.overflow = 'hidden';
 
-  // Object cloud
-
-  let particleCount = 1500;
-  let particleSpread = 1500;
+  /* --- particle cloud --- */
 
   for (let i = 0; i < particleCount; i++) {
-    let geometry = new THREE.SphereGeometry(1, 3, 3);
-
-    const displacementMap = new THREE.TextureLoader().load(
-      'https://i.pinimg.com/originals/b9/ff/b1/b9ffb16bcbb8e4e091b939488f4cdf8a.jpg'
-    );
+    let geometry = new THREE.SphereGeometry(1, 5, 2);
 
     material = new THREE.MeshPhongMaterial({
       color: colors.whitePoint,
@@ -164,32 +153,40 @@ function init() {
     });
 
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
 
     mesh.translateX(noise(i) * particleSpread - particleSpread / 2);
     mesh.translateY(noise(i + 1) * particleSpread - particleSpread / 2);
     mesh.translateZ(noise(i + 2) * particleSpread - particleSpread / 2);
 
-    scene.add(mesh);
+    particles.add(mesh);
   }
 
-  // lights
+  scene.add(particles);
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+  particles.children.forEach((object) => {
+    object.rotation.x = Math.floor(Math.random() * 10);
+    object.rotation.y = Math.floor(Math.random() * 10);
+    object.rotation.z = Math.floor(Math.random() * 10);
+  });
+
+  /* --- lights --- */
+
+  const directionalLight = new THREE.DirectionalLight(colors.whitePoint, 2);
   directionalLight.castShadow = true;
   directionalLight.shadow.radius = 8;
   directionalLight.position.set(-200, 200, 100);
   scene.add(directionalLight);
 
-  const light = new THREE.AmbientLight(colors.shadow);
-  scene.add(light);
+  const ambientLight = new THREE.AmbientLight(colors.shadow);
+  scene.add(ambientLight);
 
-  // cinema screen
+  /* --- movie projection --- */
 
   let videoElem = document.getElementById('video');
 
-  playButton.onclick = function () {
+  playButtonWrapper.onclick = function () {
     if (loaded) {
       videoElem.play();
       playButtonWrapper.style.display = 'none';
@@ -203,7 +200,7 @@ function init() {
   videoMesh.translateZ(video.position.z);
   scene.add(videoMesh);
 
-  // stats
+  /* --- frame rate stats. useful for debugging. --- */
 
   stats = new Stats();
   stats.domElement.style.position = 'absolute';
@@ -211,29 +208,29 @@ function init() {
   stats.domElement.style.left = '0.5rem';
   container.appendChild(stats.domElement);
 
-  // Orbit controls !
+  /* --- camera controls --- */
 
   controls = new OrbitControls(camera, container);
   controls.enableDamping = true;
   controls.autoRotate = false;
   controls.enableZoom = true;
   controls.enablePan = false;
-  controls.zoomSpeed = 0.3;
+  controls.zoomSpeed = zoomSpeed;
   controls.enableRotate = false;
   controls.dampingFactor = 0.005;
-
   controls.minAzimuthAngle = -Math.PI * 0.5;
   controls.maxAzimuthAngle = Math.PI * 0.5;
   controls.minPolarAngle = -Math.PI;
   controls.maxPolarAngle = Math.PI;
-
   controls.target = video.position;
   controls.maxDistance = cameraZ;
   controls.minDistance = video.cameraOffset;
 
-  // everything else
+  /* --- event listeners --- */
 
   window.addEventListener('resize', onWindowResize, false);
+
+  /* --- renderer --- */
 
   renderer = new THREE.WebGLRenderer();
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -250,13 +247,13 @@ function animate() {
 }
 
 function render() {
-  var time = Date.now() * 0.00005;
+  const time = Date.now() * 0.000001;
 
-  for (i = 0; i < scene.children.length; i++) {
-    var object = scene.children[i];
-
-    if (object instanceof THREE.PointCloud) {
-      object.rotation.y = time * (i < 4 ? i + 1 : -(i + 1));
+  if (particlesShouldSpin) {
+    for (i = 0; i < particles.children.length; i++) {
+      let particle = particles.children[i];
+      particle.rotation.y = time * i;
+      particle.rotation.x = time * i;
     }
   }
 
