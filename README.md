@@ -6,4 +6,4 @@ Once installation is complete, `yarn dev` or `npm run dev` will spin up a develo
 
 To run a production build, run `yarn build` or `npm build`. This will build to the `dist` folder.
 
-All necessary variables to customize the scene are located at the top of `index.js`.
+All necessary variables to customize the scene are located at the top of `src/index.js`.
