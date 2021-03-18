@@ -129,6 +129,7 @@ function init() {
 
         hut.rotation.x = Math.PI / 2;
         scene.add(hut);
+
         // scene.add(model);
 
         playButtonWrapper.style.cursor = 'pointer';
