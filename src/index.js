@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import decorder from 'three/examples/js/libs/draco/draco_decoder';
-import glb from './assets/hut.glb';
+import glb from './assets/hut-hd.glb';
 import Stats from 'stats.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
@@ -45,9 +45,9 @@ const params = {
   bloomRadius: 0,
 };
 
-const particleSize = 2;
+const particleSize = 1;
 const particleColor = 'white';
-const particleCount = 1000; // adding more particles impacts performance
+const particleCount = 1500; // adding more particles impacts performance
 const particleSpread = 500;
 
 /* --- Changeable variables end --- */
@@ -91,33 +91,39 @@ function init() {
       glb,
       function (gltf) {
         const model = gltf.scene;
-        const modelRes = 1;
 
         model.traverse((o) => {
           if (o.isMesh) {
-            for (let i = 0; i <= o.geometry.index.array.length; i += modelRes) {
-              let pos = o.geometry.attributes.position;
-              let vertex = new THREE.Vector3().fromBufferAttribute(pos, i);
+            const { length } = o.geometry.index.array;
 
-              const geometry = new THREE.BufferGeometry();
+            const geometry = new THREE.BufferGeometry();
+            let vertices = new Float32Array(length);
+
+            for (let i = 0; i <= length; i += 3) {
+              let vertex = new THREE.Vector3().fromBufferAttribute(
+                o.geometry.attributes.position,
+                i
+              );
 
               if (!isNaN(vertex.x) && !isNaN(vertex.y) & !isNaN(vertex.z)) {
-                let vertices = new Float32Array([vertex.x, vertex.y, vertex.z]);
-
-                geometry.setAttribute(
-                  'position',
-                  new THREE.BufferAttribute(vertices, 3)
-                );
-
-                const material = new THREE.PointsMaterial({
-                  color: particleColor,
-                  size: particleSize,
-                });
-
-                let mesh = new THREE.Points(geometry, material);
-                hut.add(mesh);
+                vertices[i] = vertex.x;
+                vertices[i + 1] = vertex.y;
+                vertices[i + 2] = vertex.z;
               }
             }
+
+            geometry.setAttribute(
+              'position',
+              new THREE.BufferAttribute(vertices, 3)
+            );
+
+            const material = new THREE.PointsMaterial({
+              color: particleColor,
+              size: particleSize,
+            });
+
+            let mesh = new THREE.Points(geometry, material);
+            hut.add(mesh);
           }
         });
 
@@ -294,6 +300,12 @@ function animate() {
   requestAnimationFrame(animate);
   composer.render();
   controls.update();
+
+  console.log('Scene polycount:', renderer.info.render.triangles);
+  console.log('Active Drawcalls:', renderer.info.render.calls);
+  console.log('Textures in Memory', renderer.info.memory.textures);
+  console.log('Geometries in Memory', renderer.info.memory.geometries);
+
   if (showDebugInfo) stats.update();
 }
 
