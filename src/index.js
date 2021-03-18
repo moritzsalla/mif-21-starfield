@@ -1,27 +1,24 @@
 import './styles.css';
 import * as THREE from 'three';
-import { noise, noiseDetail, noiseSeed } from './math/noise';
+import { random } from './math/random';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import decorder from 'three/examples/js/libs/draco/draco_decoder';
-import houseGLB from './assets/srt10.glb';
+import glb from './assets/hut.glb';
 import Stats from 'stats.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
 
 /* --- Changeable variables --- */
 
-const showDebugInfo = false; // display frame counter in top left corner. 60fps is great, anything above 24 is acceptable.
+const showDebugInfo = true; // display frame counter in top left corner. 60fps is great, anything above 24 is acceptable.
 const zoomSpeed = 0.3;
-const particleCount = 3000; // adding more particles impacts performance
-const particleSpread = 1500;
 const fogDensity = 0.0005;
 const fieldOfView = 50;
 const cameraZ = 2000; // how high up is the camera's starting position?
 const cameraY = 0; // how high up is the camera's starting position?
-const randomStarSpawn = false; // changing this to "true" will make stars spawn in random positions every time the website is loaded
-const particlesShouldSpin = true; // turning this off might improve performance. impacts performance.
-const mouseParallax = true; // makes the camera drift with mouse position, creating parallax effect. impacts performance.
-const mouseParallaxEase = 0.25; // changes subtlety of effect
 
 const colors = {
   whitePoint: 'rgb(255, 255, 255)', // stars
@@ -31,7 +28,7 @@ const colors = {
 const house = {
   hidden: false, // display custom model?
   position: new THREE.Vector3(0, -30, 0), // x, y, and z position of custom model
-  scale: 0.05,
+  scale: 1,
   rotation: 280, // which way the custom model is facing (y axis)
 };
 const video = {
@@ -41,12 +38,25 @@ const video = {
   width: 320,
 };
 
+const params = {
+  exposure: 1,
+  bloomStrength: 2,
+  bloomThreshold: 0,
+  bloomRadius: 0,
+};
+
+const particleSize = 2;
+const particleColor = 'white';
+const particleCount = 1000; // adding more particles impacts performance
+const particleSpread = 500;
+
 /* --- Changeable variables end --- */
 
 const playButtonWrapper = document.querySelector('.play-button-wrapper');
 const playButton = document.getElementById('play-button');
 
-const particles = new THREE.Group();
+const stars = new THREE.Group();
+const hut = new THREE.Group();
 
 let scene, camera, renderer;
 let container,
@@ -58,14 +68,12 @@ let container,
   nearPlane,
   farPlane,
   stats,
+  composer,
   controls,
   i,
   material;
 
 let loaded = false;
-
-if (!randomStarSpawn) noiseSeed(120);
-noiseDetail(10);
 
 init();
 animate();
@@ -75,19 +83,47 @@ function init() {
 
   if (!house.hidden) {
     const loader = new GLTFLoader();
-
-    // Optional: Provide a DRACOLoader instance to decode compressed mesh data
     const dracoLoader = new DRACOLoader();
     dracoLoader.setDecoderPath(decorder);
     loader.setDRACOLoader(dracoLoader);
 
     loader.load(
-      houseGLB,
+      glb,
       function (gltf) {
-        gltf.scene.translateY(house.position.y);
-        gltf.scene.scale.set(house.scale, house.scale, house.scale);
-        gltf.scene.rotateY(house.rotation);
-        scene.add(gltf.scene);
+        const model = gltf.scene;
+        const modelRes = 1;
+
+        model.traverse((o) => {
+          if (o.isMesh) {
+            for (let i = 0; i <= o.geometry.index.array.length; i += modelRes) {
+              let pos = o.geometry.attributes.position;
+              let vertex = new THREE.Vector3().fromBufferAttribute(pos, i);
+
+              const geometry = new THREE.BufferGeometry();
+
+              if (!isNaN(vertex.x) && !isNaN(vertex.y) & !isNaN(vertex.z)) {
+                let vertices = new Float32Array([vertex.x, vertex.y, vertex.z]);
+
+                geometry.setAttribute(
+                  'position',
+                  new THREE.BufferAttribute(vertices, 3)
+                );
+
+                const material = new THREE.PointsMaterial({
+                  color: particleColor,
+                  size: particleSize,
+                });
+
+                let mesh = new THREE.Points(geometry, material);
+                hut.add(mesh);
+              }
+            }
+          }
+        });
+
+        hut.rotation.x = Math.PI / 2;
+        scene.add(hut);
+        // scene.add(model);
 
         playButtonWrapper.style.cursor = 'pointer';
         playButton.style.display = 'block';
@@ -129,21 +165,11 @@ function init() {
   camera.position.z = cameraZ;
   camera.position.y = cameraY;
 
-  if (mouseParallax) {
-    document.addEventListener('mousemove', (event) => {
-      let mouseX = (event.clientX / window.innerWidth) * 2 - 1;
-      let mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
-
-      camera.position.x += mouseX * mouseParallaxEase;
-      camera.position.y += mouseY * mouseParallaxEase;
-    });
-  }
-
   /* --- scene --- */
 
   scene = new THREE.Scene();
   scene.background = colors.blackPoint;
-  scene.fog = new THREE.FogExp2(colors.blackPoint, fogDensity);
+  // scene.fog = new THREE.FogExp2(colors.blackPoint, fogDensity);
 
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -153,31 +179,27 @@ function init() {
   /* --- particle cloud --- */
 
   for (let i = 0; i < particleCount; i++) {
-    let geometry = new THREE.SphereGeometry(1, 5, 2);
+    let geometry = new THREE.BufferGeometry();
 
-    material = new THREE.MeshPhongMaterial({
-      color: colors.whitePoint,
-      wireframe: false,
+    const vertices = new Float32Array([
+      random(-particleSpread, particleSpread),
+      random(-particleSpread, particleSpread),
+      random(-particleSpread, particleSpread),
+    ]);
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+
+    const material = new THREE.PointsMaterial({
+      color: particleColor,
+      size: particleSize,
     });
 
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = false;
-    mesh.receiveShadow = false;
+    const mesh = new THREE.Points(geometry, material);
 
-    mesh.translateX(noise(i) * particleSpread - particleSpread / 2);
-    mesh.translateY(noise(i + 1) * particleSpread - particleSpread / 2);
-    mesh.translateZ(noise(i + 2) * particleSpread - particleSpread / 2);
-
-    particles.add(mesh);
+    stars.add(mesh);
   }
 
-  scene.add(particles);
-
-  particles.children.forEach((object) => {
-    object.rotation.x = Math.floor(Math.random() * 10);
-    object.rotation.y = Math.floor(Math.random() * 10);
-    object.rotation.z = Math.floor(Math.random() * 10);
-  });
+  scene.add(stars);
 
   /* --- lights --- */
 
@@ -206,7 +228,7 @@ function init() {
   let videoMaterial = new THREE.MeshLambertMaterial({ map: videoTexture });
   let videoMesh = new THREE.Mesh(videoGeometry, videoMaterial);
   videoMesh.translateZ(video.position.z);
-  scene.add(videoMesh);
+  // scene.add(videoMesh);
 
   /* --- frame rate stats. useful for debugging. --- */
 
@@ -226,13 +248,13 @@ function init() {
   controls.enableZoom = true;
   controls.enablePan = false;
   controls.zoomSpeed = zoomSpeed;
-  controls.enableRotate = false;
+  controls.enableRotate = true;
   controls.dampingFactor = 0.005;
-  controls.minAzimuthAngle = -Math.PI * 0.5;
-  controls.maxAzimuthAngle = Math.PI * 0.5;
-  controls.minPolarAngle = -Math.PI;
-  controls.maxPolarAngle = Math.PI;
-  controls.target = video.position;
+  // controls.minAzimuthAngle = -Math.PI * 0.5;
+  // controls.maxAzimuthAngle = Math.PI * 0.5;
+  // controls.minPolarAngle = -Math.PI;
+  // controls.maxPolarAngle = Math.PI;
+  // controls.target = video.position;
   controls.maxDistance = cameraZ;
   controls.minDistance = video.cameraOffset;
 
@@ -244,30 +266,35 @@ function init() {
 
   renderer = new THREE.WebGLRenderer();
   renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(WIDTH, HEIGHT);
+  renderer.setSize(window.innerWidth, window.innerHeight);
 
   container.appendChild(renderer.domElement);
+
+  /* --- post processing --- */
+
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+
+  const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    1.5,
+    0.4,
+    0.85
+  );
+
+  bloomPass.renderToScreen = false;
+  composer.addPass(bloomPass);
+
+  bloomPass.threshold = params.bloomThreshold;
+  bloomPass.strength = params.bloomStrength;
+  bloomPass.radius = params.bloomRadius;
 }
 
 function animate() {
   requestAnimationFrame(animate);
-  render();
+  composer.render();
   controls.update();
   if (showDebugInfo) stats.update();
-}
-
-function render() {
-  const time = Date.now() * 0.000001;
-
-  if (particlesShouldSpin) {
-    for (i = 0; i < particles.children.length; i++) {
-      let particle = particles.children[i];
-      particle.rotation.y = time * i;
-      particle.rotation.x = time * i;
-    }
-  }
-
-  renderer.render(scene, camera);
 }
 
 function onWindowResize() {
@@ -277,4 +304,5 @@ function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
 }
