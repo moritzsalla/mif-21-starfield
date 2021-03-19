@@ -23,11 +23,10 @@ const cameraY = 0; // how high up is the camera's starting position?
 
 const particleSize = 3;
 const particleColor = '#8DFA70';
-const particleCount = 100; // adding more particles impacts performance
-const particleSpread = 1000;
+const particleCount = 50; // adding more particles impacts performance
+const particleSpread = 10;
 
 noiseSeed(1);
-noiseDetail(0);
 
 const colors = {
   stars: new THREE.Color('rgb(141, 250, 112)'),
@@ -188,17 +187,22 @@ function init() {
 
   /* --- particle cloud --- */
   let geometry = new THREE.BufferGeometry();
-  let vertices = new Float32Array(Math.pow(particleCount, 3));
 
-  for (let x = 0; x < particleCount; x++) {
-    for (let y = 0; y < particleCount; y++) {
-      for (let z = 0; z < particleCount; z++) {
-        const val = map(noise(x, y, z), 0, 1, -particleSpread, particleSpread);
+  let bla = [];
 
-        vertices[x + y * z] = val;
+  for (let x = -particleCount; x < particleCount; x++) {
+    for (let y = -particleCount; y < particleCount; y++) {
+      for (let z = -particleCount; z < particleCount; z++) {
+        const val = noise(x * 0.1, y * 0.1, z * 0.1);
+
+        if (val < 0.3) {
+          bla.push(x * particleSpread, y * particleSpread, z * particleSpread);
+        }
       }
     }
   }
+
+  let vertices = new Float32Array(bla);
 
   geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
 
