@@ -1,6 +1,8 @@
 import './styles.css';
 import * as THREE from 'three';
 import { random } from './math/random';
+import { map } from './math/map';
+import { noise, noiseDetail, noiseSeed } from './math/noise';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
@@ -13,23 +15,27 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
 
 /* --- Changeable variables --- */
 
-const showDebugInfo = true; // display frame counter in top left corner. 60fps is great, anything above 24 is acceptable.
+const debug = false;
 const zoomSpeed = 0.3;
-const fogDensity = 0.0005;
 const fieldOfView = 50;
 const cameraZ = 2000; // how high up is the camera's starting position?
 const cameraY = 0; // how high up is the camera's starting position?
 
+const particleSize = 3;
+const particleColor = '#8DFA70';
+const particleCount = 100; // adding more particles impacts performance
+const particleSpread = 1000;
+
+noiseSeed(1);
+noiseDetail(0);
+
 const colors = {
-  whitePoint: 'rgb(255, 255, 255)', // stars
-  shadow: 'rgb(50, 50, 50)', // fog and shadows
-  blackPoint: 'rgb(0, 0, 0)', // background
+  stars: new THREE.Color('rgb(141, 250, 112)'),
+  background: new THREE.Color('rgb(0, 2, 0)'),
 };
 const house = {
-  hidden: false, // display custom model?
-  position: new THREE.Vector3(0, -30, 0), // x, y, and z position of custom model
-  scale: 1,
-  rotation: 280, // which way the custom model is facing (y axis)
+  mesh: false,
+  vertices: false,
 };
 const video = {
   position: new THREE.Vector3(0, 0, -400), // x, y, and z position of the video canvas
@@ -37,7 +43,7 @@ const video = {
   height: 240, // it's best to make these your
   width: 320,
 };
-
+// bloom/glow
 const params = {
   exposure: 1,
   bloomStrength: 2,
@@ -45,17 +51,11 @@ const params = {
   bloomRadius: 0,
 };
 
-const particleSize = 1;
-const particleColor = 'white';
-const particleCount = 1500; // adding more particles impacts performance
-const particleSpread = 500;
-
 /* --- Changeable variables end --- */
 
 const playButtonWrapper = document.querySelector('.play-button-wrapper');
 const playButton = document.getElementById('play-button');
 
-const stars = new THREE.Group();
 const hut = new THREE.Group();
 
 let scene, camera, renderer;
@@ -127,10 +127,12 @@ function init() {
           }
         });
 
-        hut.rotation.x = Math.PI / 2;
-        scene.add(hut);
+        if (house.vertices) {
+          hut.rotation.x = Math.PI / 2;
+          scene.add(hut);
+        }
 
-        // scene.add(model);
+        if (house.mesh) scene.add(model);
 
         playButtonWrapper.style.cursor = 'pointer';
         playButton.style.display = 'block';
@@ -138,7 +140,8 @@ function init() {
         loaded = true;
       },
       function (xhr) {
-        // console.log(Math.ceil((xhr.loaded / xhr.total) * 100) + '% loaded');
+        if (debug)
+          console.log(Math.ceil((xhr.loaded / xhr.total) * 100) + '% loaded');
         playButton.innerHTML = `Loading model…`;
       },
       function (error) {
@@ -175,7 +178,7 @@ function init() {
   /* --- scene --- */
 
   scene = new THREE.Scene();
-  scene.background = colors.blackPoint;
+  scene.background = colors.background;
   // scene.fog = new THREE.FogExp2(colors.blackPoint, fogDensity);
 
   container = document.createElement('div');
@@ -184,27 +187,27 @@ function init() {
   document.body.style.overflow = 'hidden';
 
   /* --- particle cloud --- */
+  let geometry = new THREE.BufferGeometry();
+  let vertices = new Float32Array(Math.pow(particleCount, 3));
 
-  for (let i = 0; i < particleCount; i++) {
-    let geometry = new THREE.BufferGeometry();
+  for (let x = 0; x < particleCount; x++) {
+    for (let y = 0; y < particleCount; y++) {
+      for (let z = 0; z < particleCount; z++) {
+        const val = map(noise(x, y, z), 0, 1, -particleSpread, particleSpread);
 
-    const vertices = new Float32Array([
-      random(-particleSpread, particleSpread),
-      random(-particleSpread, particleSpread),
-      random(-particleSpread, particleSpread),
-    ]);
-
-    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-
-    const material = new THREE.PointsMaterial({
-      color: particleColor,
-      size: particleSize,
-    });
-
-    const mesh = new THREE.Points(geometry, material);
-
-    stars.add(mesh);
+        vertices[x + y * z] = val;
+      }
+    }
   }
+
+  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+
+  const material = new THREE.PointsMaterial({
+    color: particleColor,
+    size: particleSize,
+  });
+
+  const stars = new THREE.Points(geometry, material);
 
   scene.add(stars);
 
@@ -239,7 +242,7 @@ function init() {
 
   /* --- frame rate stats. useful for debugging. --- */
 
-  if (showDebugInfo) {
+  if (debug) {
     stats = new Stats();
     stats.domElement.style.position = 'absolute';
     stats.domElement.style.top = '0.5rem';
@@ -257,10 +260,10 @@ function init() {
   controls.zoomSpeed = zoomSpeed;
   controls.enableRotate = true;
   controls.dampingFactor = 0.005;
-  // controls.minAzimuthAngle = -Math.PI * 0.5;
-  // controls.maxAzimuthAngle = Math.PI * 0.5;
-  // controls.minPolarAngle = -Math.PI;
-  // controls.maxPolarAngle = Math.PI;
+  controls.minAzimuthAngle = -Math.PI * 0.5;
+  controls.maxAzimuthAngle = Math.PI * 0.5;
+  controls.minPolarAngle = -Math.PI;
+  controls.maxPolarAngle = Math.PI;
   // controls.target = video.position;
   controls.maxDistance = cameraZ;
   controls.minDistance = video.cameraOffset;
@@ -302,12 +305,16 @@ function animate() {
   composer.render();
   controls.update();
 
-  console.log('Scene polycount:', renderer.info.render.triangles);
-  console.log('Active Drawcalls:', renderer.info.render.calls);
-  console.log('Textures in Memory', renderer.info.memory.textures);
-  console.log('Geometries in Memory', renderer.info.memory.geometries);
+  if (debug) {
+    console.log({
+      'Scene polycount': renderer.info.render.triangles,
+      'Active Drawcalls': renderer.info.render.calls,
+      'Textures in Memory': renderer.info.memory.textures,
+      'Geometries in Memory': renderer.info.memory.geometries,
+    });
 
-  if (showDebugInfo) stats.update();
+    stats.update();
+  }
 }
 
 function onWindowResize() {
