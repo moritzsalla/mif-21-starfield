@@ -21,20 +21,21 @@ const fieldOfView = 50;
 const cameraZ = 2000; // how high up is the camera's starting position?
 const cameraY = 0; // how high up is the camera's starting position?
 
-const particleSize = 3;
-const particleColor = '#8DFA70';
+const particleSize = 4;
 const particleCount = 50; // adding more particles impacts performance
-const particleSpread = 10;
+const particleSpread = 30;
+const particleRes = 1;
+const particleRandOffset = () => random(-50, 50);
 
-noiseSeed(1);
+// noiseSeed(1);
 
 const colors = {
-  stars: new THREE.Color('rgb(141, 250, 112)'),
+  stars: '#8DFA70', // #8DFA70
   background: new THREE.Color('rgb(0, 2, 0)'),
 };
 const house = {
+  vertices: true,
   mesh: false,
-  vertices: false,
 };
 const video = {
   position: new THREE.Vector3(0, 0, -400), // x, y, and z position of the video canvas
@@ -51,6 +52,11 @@ const params = {
 };
 
 /* --- Changeable variables end --- */
+
+// point cloud
+let geometry = new THREE.BufferGeometry();
+let kinkyArray = [];
+// point cloud end
 
 const playButtonWrapper = document.querySelector('.play-button-wrapper');
 const playButton = document.getElementById('play-button');
@@ -117,7 +123,7 @@ function init() {
             );
 
             const material = new THREE.PointsMaterial({
-              color: particleColor,
+              color: colors.stars,
               size: particleSize,
             });
 
@@ -186,34 +192,21 @@ function init() {
   document.body.style.overflow = 'hidden';
 
   /* --- particle cloud --- */
-  let geometry = new THREE.BufferGeometry();
-
-  let bla = [];
-
-  for (let x = -particleCount; x < particleCount; x++) {
-    for (let y = -particleCount; y < particleCount; y++) {
-      for (let z = -particleCount; z < particleCount; z++) {
+  for (let x = -particleCount; x < particleCount; x += particleRes) {
+    for (let y = -particleCount; y < particleCount; y += particleRes) {
+      for (let z = -particleCount; z < particleCount; z += particleRes) {
         const val = noise(x * 0.1, y * 0.1, z * 0.1);
 
         if (val < 0.3) {
-          bla.push(x * particleSpread, y * particleSpread, z * particleSpread);
+          kinkyArray.push(
+            x * particleSpread + particleRandOffset(),
+            y * particleSpread + particleRandOffset(),
+            z * particleSpread + particleRandOffset()
+          );
         }
       }
     }
   }
-
-  let vertices = new Float32Array(bla);
-
-  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-
-  const material = new THREE.PointsMaterial({
-    color: particleColor,
-    size: particleSize,
-  });
-
-  const stars = new THREE.Points(geometry, material);
-
-  scene.add(stars);
 
   /* --- lights --- */
 
@@ -264,10 +257,10 @@ function init() {
   controls.zoomSpeed = zoomSpeed;
   controls.enableRotate = true;
   controls.dampingFactor = 0.005;
-  controls.minAzimuthAngle = -Math.PI * 0.5;
-  controls.maxAzimuthAngle = Math.PI * 0.5;
-  controls.minPolarAngle = -Math.PI;
-  controls.maxPolarAngle = Math.PI;
+  // controls.minAzimuthAngle = -Math.PI * 0.5;
+  // controls.maxAzimuthAngle = Math.PI * 0.5;
+  // controls.minPolarAngle = -Math.PI;
+  // controls.maxPolarAngle = Math.PI;
   // controls.target = video.position;
   controls.maxDistance = cameraZ;
   controls.minDistance = video.cameraOffset;
@@ -278,7 +271,7 @@ function init() {
 
   /* --- renderer --- */
 
-  renderer = new THREE.WebGLRenderer();
+  renderer = new THREE.WebGLRenderer({ antialias: false });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
 
@@ -296,7 +289,7 @@ function init() {
     0.85
   );
 
-  bloomPass.renderToScreen = false;
+  bloomPass.renderToScreen = true;
   composer.addPass(bloomPass);
 
   bloomPass.threshold = params.bloomThreshold;
@@ -305,6 +298,11 @@ function init() {
 }
 
 function animate() {
+  const frameCount = renderer.info.render.frame;
+  kinkyArray = kinkyArray.map((vertex) => (vertex += random(-1, 1)));
+
+  calcVertexPositions();
+
   requestAnimationFrame(animate);
   composer.render();
   controls.update();
@@ -329,4 +327,19 @@ function onWindowResize() {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   composer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function calcVertexPositions() {
+  let vertices = new Float32Array(kinkyArray);
+
+  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+
+  const material = new THREE.PointsMaterial({
+    color: colors.stars,
+    size: particleSize,
+  });
+
+  let stars = new THREE.Points(geometry, material);
+
+  scene.add(stars);
 }
