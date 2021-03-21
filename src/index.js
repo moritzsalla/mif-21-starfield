@@ -239,7 +239,7 @@ function init() {
   let videoMaterial = new THREE.MeshLambertMaterial({ map: videoTexture });
   let videoMesh = new THREE.Mesh(videoGeometry, videoMaterial);
   videoMesh.translateZ(video.position.z);
-  // scene.add(videoMesh);
+  scene.add(videoMesh);
 
   /* --- frame rate stats. useful for debugging. --- */
 
