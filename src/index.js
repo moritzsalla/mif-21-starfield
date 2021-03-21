@@ -3,18 +3,18 @@
 import './styles.css';
 import * as THREE from 'three';
 import { random } from './math/random';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { map } from './math/map';
 import { noise, noiseDetail, noiseSeed } from './math/noise';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
-import decorder from 'three/examples/js/libs/draco/draco_decoder';
-import glb from './assets/hut-hd.glb';
 import Stats from 'stats.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
+
+import { add as addParticleCloud } from './objects/particleCloud';
+import { add as addMovie } from './objects/movie';
+import { add as addHut } from './objects/hutGLB';
 
 const debug = false;
 const zoomSpeed = 0.3;
@@ -22,27 +22,11 @@ const fieldOfView = 50;
 const cameraZ = 2000; // how high up is the camera's starting position?
 const cameraY = 0; // how high up is the camera's starting position?
 
-const particleSize = 3;
-const particleCount = 30; // adding more particles impacts performance
-const particleSpread = 50;
-const particleRes = 1;
-const particleRandOffset = () => random(-50, 50);
-
 noiseSeed(20);
 
 const colors = {
   stars: '#8DFA70', // #8DFA70
   background: new THREE.Color('rgb(0, 2, 0)'),
-};
-const house = {
-  vertices: true,
-  mesh: false,
-};
-const video = {
-  position: new THREE.Vector3(0, 0, -400), // x, y, and z position of the video canvas
-  cameraOffset: 220, // margin between camera end point and movie canvas
-  height: 240, // it's best to make these your
-  width: 320,
 };
 
 // bloom/glow
@@ -52,28 +36,20 @@ const bloomLayer = new THREE.Layers();
 bloomLayer.set(BLOOM_SCENE);
 
 const params = {
-  exposure: 1,
+  exposure: 0,
   bloomStrength: 2.5,
   bloomThreshold: 0,
   bloomRadius: 0,
-  scene: 'Scene with Glow', // can this go?
 };
 
 const darkMaterial = new THREE.MeshBasicMaterial({ color: 'black' });
 const materials = {};
 
-// point cloud
-let geometry = new THREE.BufferGeometry();
-let kinkyArray = [];
-// point cloud end
-
-const playButtonWrapper = document.querySelector('.play-button-wrapper');
-const playButton = document.getElementById('play-button');
-
-const hut = new THREE.Group();
-
-let scene, camera, renderer;
 let container,
+  controls,
+  scene,
+  camera,
+  renderer,
   HEIGHT,
   WIDTH,
   aspectRatio,
@@ -81,13 +57,7 @@ let container,
   windowHalfY,
   nearPlane,
   farPlane,
-  stats,
-  composer,
-  controls,
-  i,
-  material; // can any of these go?
-
-let loaded = false;
+  stats;
 
 init();
 
@@ -147,6 +117,7 @@ function init() {
   /* --- camera controls --- */
 
   controls = new OrbitControls(camera, container);
+
   controls.enableRotate = true;
   controls.autoRotate = true;
   controls.enableZoom = true;
@@ -154,13 +125,13 @@ function init() {
   controls.zoomSpeed = zoomSpeed;
   controls.enableDamping = true;
   controls.dampingFactor = 0.005;
-  // controls.minAzimuthAngle = -Math.PI * 0.5;
-  // controls.maxAzimuthAngle = Math.PI * 0.5;
-  // controls.minPolarAngle = -Math.PI;
-  // controls.maxPolarAngle = Math.PI;
-  // controls.target = video.position;
-  // controls.maxDistance = cameraZ;
-  // controls.minDistance = video.cameraOffset;
+  // minAzimuthAngle = -Math.PI * 0.5;
+  // maxAzimuthAngle = Math.PI * 0.5;
+  // minPolarAngle = -Math.PI;
+  // maxPolarAngle = Math.PI;
+  // target = video.position;
+  // maxDistance = cameraZ;
+  // minDistance = video.cameraOffset;
 
   /* --- renderer --- */
 
@@ -188,7 +159,7 @@ function init() {
   bloomComposer.addPass(renderScene);
   bloomComposer.addPass(bloomPass);
 
-  // final pass
+  /* --- final pass --- */
 
   const finalPass = new ShaderPass(
     new THREE.ShaderMaterial({
@@ -204,144 +175,19 @@ function init() {
   );
   finalPass.needsSwap = true;
 
-  // composer
+  /* ---  composer --- */
 
   finalComposer = new EffectComposer(renderer);
   finalComposer.addPass(renderScene);
   finalComposer.addPass(finalPass);
 
-  addParticleCloud();
-  addHut();
-  addMovie();
+  /* --- add objects --- */
+
+  addParticleCloud(colors, BLOOM_SCENE, scene);
+  addHut(colors, BLOOM_SCENE, scene);
+  addMovie(scene);
+
   render();
-}
-
-function addParticleCloud() {
-  for (let x = -particleCount; x < particleCount; x += particleRes) {
-    for (let y = -particleCount; y < particleCount; y += particleRes) {
-      for (let z = -particleCount; z < particleCount; z += particleRes) {
-        const val = noise(x * 0.2, y * 0.2, z * 0.2);
-
-        if (val < 0.3) {
-          kinkyArray.push(
-            x * particleSpread + particleRandOffset(),
-            y * particleSpread + particleRandOffset(),
-            z * particleSpread + particleRandOffset()
-          );
-        }
-      }
-    }
-  }
-
-  let vertices = new Float32Array(kinkyArray);
-
-  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-
-  const material = new THREE.PointsMaterial({
-    color: colors.stars,
-    size: particleSize,
-  });
-
-  let stars = new THREE.Points(geometry, material);
-  stars.layers.enable(BLOOM_SCENE);
-  scene.add(stars);
-}
-
-function addHut() {
-  if (!house.hidden) {
-    const loader = new GLTFLoader();
-    const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath(decorder);
-    loader.setDRACOLoader(dracoLoader);
-
-    loader.load(
-      glb,
-      function (gltf) {
-        const model = gltf.scene;
-
-        model.traverse((o) => {
-          if (o.isMesh) {
-            const { length } = o.geometry.index.array;
-
-            const geometry = new THREE.BufferGeometry();
-            let vertices = new Float32Array(length);
-
-            for (let i = 0; i <= length; i += 3) {
-              let vertex = new THREE.Vector3().fromBufferAttribute(
-                o.geometry.attributes.position,
-                i
-              );
-
-              if (!isNaN(vertex.x) && !isNaN(vertex.y) & !isNaN(vertex.z)) {
-                vertices[i] = vertex.x;
-                vertices[i + 1] = vertex.y;
-                vertices[i + 2] = vertex.z;
-              }
-            }
-
-            geometry.setAttribute(
-              'position',
-              new THREE.BufferAttribute(vertices, 3)
-            );
-
-            const material = new THREE.PointsMaterial({
-              color: colors.stars,
-              size: particleSize,
-            });
-
-            let mesh = new THREE.Points(geometry, material);
-            hut.add(mesh);
-          }
-        });
-
-        if (house.vertices) {
-          hut.rotation.x = Math.PI / 2;
-          hut.rotation.z = 20;
-          hut.translateZ(50);
-          hut.layers.enable(BLOOM_SCENE);
-          scene.add(hut);
-        }
-
-        if (house.mesh) scene.add(model);
-
-        playButtonWrapper.style.cursor = 'pointer';
-        playButton.style.display = 'block';
-        playButton.innerHTML = 'Press to play';
-        loaded = true;
-      },
-      function (xhr) {
-        if (debug)
-          console.log(Math.ceil((xhr.loaded / xhr.total) * 100) + '% loaded');
-        playButton.innerHTML = `Loading model…`;
-      },
-      function (error) {
-        console.error(error);
-      }
-    );
-  } else {
-    playButtonWrapper.style.cursor = 'pointer';
-    playButton.style.display = 'block';
-    playButton.innerHTML = 'Press to play';
-    loaded = true;
-  }
-}
-
-function addMovie() {
-  let videoElem = document.getElementById('video');
-
-  playButtonWrapper.onclick = function () {
-    if (loaded) {
-      videoElem.play();
-      playButtonWrapper.style.display = 'none';
-    }
-  };
-
-  let videoTexture = new THREE.VideoTexture(videoElem);
-  let videoGeometry = new THREE.BoxGeometry(video.width, video.height, 0.01);
-  let videoMaterial = new THREE.MeshLambertMaterial({ map: videoTexture });
-  let videoMesh = new THREE.Mesh(videoGeometry, videoMaterial);
-  videoMesh.translateZ(video.position.z);
-  scene.add(videoMesh);
 }
 
 function render() {
@@ -364,34 +210,6 @@ function render() {
   scene.traverse(restoreMaterial);
 
   finalComposer.render();
-}
-
-// objects
-
-function addBloomElem() {
-  const geometry = new THREE.IcosahedronGeometry(1, 15);
-
-  for (let i = 0; i < 50; i++) {
-    const color = new THREE.Color();
-    color.setHSL(Math.random(), 0.7, Math.random() * 0.2 + 0.05);
-    const material = new THREE.MeshBasicMaterial({ color: color });
-    const sphere = new THREE.Mesh(geometry, material);
-    sphere.position.x = Math.random() * 10 - 5;
-    sphere.position.y = Math.random() * 10 - 5;
-    sphere.position.z = Math.random() * 10 - 5;
-    sphere.position.normalize().multiplyScalar(Math.random() * 4.0 + 2.0);
-    sphere.scale.setScalar(Math.random() * Math.random() + 0.5);
-    sphere.layers.enable(BLOOM_SCENE);
-    scene.add(sphere);
-  }
-}
-
-function addFlatElem() {
-  const geometry = new THREE.IcosahedronGeometry(1, 15);
-  const material = new THREE.MeshBasicMaterial({ color: 'white' });
-  const sphere = new THREE.Mesh(geometry, material);
-  sphere.scale.setScalar(Math.random() * Math.random() + 0.5);
-  scene.add(sphere);
 }
 
 // funky selective masking bloom functions, better not touch
