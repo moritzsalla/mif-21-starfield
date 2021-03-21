@@ -1,27 +1,34 @@
 import * as THREE from 'three';
-import { noise } from '../math/noise';
+import { noise, noiseSeed } from '../math/noise';
 import { random } from '../math/random';
 
-const particleSize = 3;
-const particleCount = 30; // adding more particles impacts performance
-const particleSpread = 50;
-const particleRes = 1;
-const particleRandOffset = () => random(-50, 50);
+const particleSize = 2; // dot size
+const particleCount = 80; // adding more particles impacts performance
+const cloudSize = 10;
+const noiseResolution = 0.15;
+const noiseStructure = 50;
+
+noiseSeed(1);
 
 let geometry = new THREE.BufferGeometry();
 let kinkyArray = []; // better to used typed array here, but performance is decent
+const calcRandOffset = () => random(-noiseStructure, noiseStructure);
 
 export function add(colors, BLOOM_SCENE, scene) {
-  for (let x = -particleCount; x < particleCount; x += particleRes) {
-    for (let y = -particleCount; y < particleCount; y += particleRes) {
-      for (let z = -particleCount; z < particleCount; z += particleRes) {
-        const val = noise(x * 0.2, y * 0.2, z * 0.2);
+  for (let x = -particleCount; x < particleCount; x++) {
+    for (let y = -particleCount; y < particleCount; y++) {
+      for (let z = -particleCount; z < particleCount; z++) {
+        const val = noise(
+          x * noiseResolution,
+          y * noiseResolution,
+          z * noiseResolution
+        );
 
-        if (val < 0.3) {
+        if (val < 0.2) {
           kinkyArray.push(
-            x * particleSpread + particleRandOffset(),
-            y * particleSpread + particleRandOffset(),
-            z * particleSpread + particleRandOffset()
+            x * cloudSize + calcRandOffset(),
+            y * cloudSize + calcRandOffset(),
+            z * cloudSize + calcRandOffset()
           );
         }
       }

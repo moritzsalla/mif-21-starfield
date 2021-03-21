@@ -2,8 +2,8 @@ import * as THREE from 'three';
 
 const playButtonWrapper = document.querySelector('.play-button-wrapper');
 
-const height = 240;
-const width = 320;
+const height = 540;
+const width = 900;
 
 export function add(scene, position) {
   const videoElem = document.getElementById('video');

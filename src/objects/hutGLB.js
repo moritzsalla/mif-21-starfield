@@ -9,9 +9,9 @@ const playButtonWrapper = document.querySelector('.play-button-wrapper');
 
 const hut = new THREE.Group();
 
+const particleSize = 2;
 const showVertices = true;
 const showMesh = false;
-const particleSize = 3;
 
 export function add(colors, BLOOM_SCENE, scene) {
   const loader = new GLTFLoader();

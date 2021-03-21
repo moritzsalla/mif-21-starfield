@@ -1,20 +1,16 @@
 // add stars to group, give gro player, make layer bloom
 
-import './styles.css';
-import * as THREE from 'three';
-import { random } from './math/random';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { map } from './math/map';
-import { noise, noiseDetail, noiseSeed } from './math/noise';
 import Stats from 'stats.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
-
-import { add as addParticleCloud } from './objects/particleCloud';
-import { add as addMovie } from './objects/movie';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
 import { add as addHut } from './objects/hutGLB';
+import { add as addMovie } from './objects/movie';
+import { add as addParticleCloud } from './objects/particleCloud';
+import './styles.css';
 
 let container,
   controls,
@@ -54,7 +50,6 @@ const bloomParams = {
 const darkMaterial = new THREE.MeshBasicMaterial({ color: 'black' });
 const materials = {};
 
-noiseSeed(20);
 init();
 
 function init() {
