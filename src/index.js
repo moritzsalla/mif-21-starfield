@@ -7,9 +7,12 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
-import { add as addHut } from './objects/hutGLB';
+import { add as addHut, rotate as rotateHut } from './objects/hutGLB';
 import { add as addMovie } from './objects/movie';
-import { add as addParticleCloud } from './objects/particleCloud';
+import {
+  add as addParticleCloud,
+  rotate as rotatePointCloud,
+} from './objects/particleCloud';
 import './styles.css';
 
 let container,
@@ -27,12 +30,12 @@ let container,
   stats;
 
 const debug = true;
-const fieldOfView = 50;
+const fieldOfView = 60;
 const videoPosition = new THREE.Vector3(0, 0, -1000);
 
 const colors = {
   stars: '#8DFA70',
-  background: new THREE.Color('rgb(0, 2, 0)'),
+  background: 'rgb(0,2,0)',
 };
 
 let bloomComposer, finalComposer;
@@ -91,11 +94,11 @@ function init() {
 
   controls = new OrbitControls(camera, container);
 
-  controls.enableRotate = true;
+  controls.enableRotate = false;
   controls.autoRotate = false;
   controls.enableZoom = true;
   controls.enablePan = false;
-  controls.zoomSpeed = 0.3;
+  controls.zoomSpeed = 0.2;
   controls.enableDamping = true;
   controls.dampingFactor = 0.01;
   controls.minAzimuthAngle = -Math.PI * 0.5;
@@ -103,10 +106,10 @@ function init() {
   controls.minPolarAngle = -Math.PI;
   controls.maxPolarAngle = Math.PI;
   controls.target = videoPosition;
-  controls.maxDistance = 2000;
-  controls.minDistance = 0;
+  controls.maxDistance = 3000;
+  controls.minDistance = 500;
 
-  camera.position.z = 2000; // how high up is the camera's starting position?
+  camera.position.z = 3000; // how high up is the camera's starting position?
   camera.position.y = 0; // how high up is the camera's starting position?
   controls.update();
 
@@ -192,6 +195,9 @@ function render() {
     // });
     stats.update();
   }
+
+  rotateHut();
+  rotatePointCloud();
 
   requestAnimationFrame(render);
   controls.update();

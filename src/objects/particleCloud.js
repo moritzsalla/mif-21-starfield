@@ -2,14 +2,15 @@ import * as THREE from 'three';
 import { noise, noiseSeed } from '../math/noise';
 import { random } from '../math/random';
 
-const particleSize = 2; // dot size
+const particleSize = 3; // dot size
 const particleCount = 80; // adding more particles impacts performance
-const cloudSize = 10;
-const noiseResolution = 0.15;
+const cloudSize = 15;
+const noiseResolution = 0.1;
 const noiseStructure = 50;
 
 noiseSeed(1);
 
+let stars;
 let geometry = new THREE.BufferGeometry();
 let kinkyArray = []; // better to used typed array here, but performance is decent
 const calcRandOffset = () => random(-noiseStructure, noiseStructure);
@@ -44,7 +45,12 @@ export function add(colors, BLOOM_SCENE, scene) {
     size: particleSize,
   });
 
-  let stars = new THREE.Points(geometry, material);
+  stars = new THREE.Points(geometry, material);
   stars.layers.enable(BLOOM_SCENE);
   scene.add(stars);
+}
+
+export function rotate() {
+  stars.rotation.z += 0.0001;
+  stars.rotation.y += 0.0001;
 }
