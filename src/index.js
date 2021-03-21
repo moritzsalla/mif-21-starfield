@@ -1,3 +1,5 @@
+// add stars to group, give gro player, make layer bloom
+
 import './styles.css';
 import * as THREE from 'three';
 import { random } from './math/random';
@@ -11,9 +13,8 @@ import glb from './assets/hut-hd.glb';
 import Stats from 'stats.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
-
-/* --- Changeable variables --- */
 
 const debug = false;
 const zoomSpeed = 0.3;
@@ -43,15 +44,23 @@ const video = {
   height: 240, // it's best to make these your
   width: 320,
 };
+
 // bloom/glow
+let bloomComposer, finalComposer;
+const BLOOM_SCENE = 1;
+const bloomLayer = new THREE.Layers();
+bloomLayer.set(BLOOM_SCENE);
+
 const params = {
   exposure: 1,
   bloomStrength: 2.5,
   bloomThreshold: 0,
   bloomRadius: 0,
+  scene: 'Scene with Glow', // can this go?
 };
 
-/* --- Changeable variables end --- */
+const darkMaterial = new THREE.MeshBasicMaterial({ color: 'black' });
+const materials = {};
 
 // point cloud
 let geometry = new THREE.BufferGeometry();
@@ -76,16 +85,169 @@ let container,
   composer,
   controls,
   i,
-  material;
+  material; // can any of these go?
 
 let loaded = false;
 
 init();
-animate();
 
 function init() {
-  /* --- Loading custom model --- */
+  /* --- camera --- */
 
+  HEIGHT = window.innerHeight;
+  WIDTH = window.innerWidth;
+  windowHalfX = WIDTH / 2;
+  windowHalfY = HEIGHT / 2;
+
+  aspectRatio = WIDTH / HEIGHT;
+  nearPlane = 1;
+  farPlane = 5000;
+
+  camera = new THREE.PerspectiveCamera(
+    fieldOfView,
+    aspectRatio,
+    nearPlane,
+    farPlane
+  );
+  camera.position.z = cameraZ;
+  camera.position.y = cameraY;
+
+  /* --- scene --- */
+
+  scene = new THREE.Scene();
+  scene.background = colors.background;
+  // scene.fog = new THREE.FogExp2(colors.blackPoint, fogDensity);
+
+  container = document.createElement('div');
+  document.body.appendChild(container);
+  document.body.style.margin = 0;
+  document.body.style.overflow = 'hidden';
+
+  /* --- lights --- */
+
+  const directionalLight = new THREE.DirectionalLight(colors.whitePoint, 2);
+  directionalLight.castShadow = true;
+  directionalLight.shadow.radius = 8;
+  directionalLight.position.set(-200, 200, 100);
+  scene.add(directionalLight);
+
+  const ambientLight = new THREE.AmbientLight(colors.shadow);
+  scene.add(ambientLight);
+
+  /* --- frame rate stats. useful for debugging. --- */
+
+  if (debug) {
+    stats = new Stats();
+    stats.domElement.style.position = 'absolute';
+    stats.domElement.style.top = '0.5rem';
+    stats.domElement.style.left = '0.5rem';
+    container.appendChild(stats.domElement);
+  }
+
+  /* --- camera controls --- */
+
+  controls = new OrbitControls(camera, container);
+  controls.enableRotate = true;
+  controls.autoRotate = true;
+  controls.enableZoom = true;
+  controls.enablePan = true;
+  controls.zoomSpeed = zoomSpeed;
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.005;
+  // controls.minAzimuthAngle = -Math.PI * 0.5;
+  // controls.maxAzimuthAngle = Math.PI * 0.5;
+  // controls.minPolarAngle = -Math.PI;
+  // controls.maxPolarAngle = Math.PI;
+  // controls.target = video.position;
+  // controls.maxDistance = cameraZ;
+  // controls.minDistance = video.cameraOffset;
+
+  /* --- renderer --- */
+
+  renderer = new THREE.WebGLRenderer({ antialias: false });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  // renderer.toneMapping = THREE.ReinhardToneMapping;
+  container.appendChild(renderer.domElement);
+
+  /* --- post processing --- */
+  const renderScene = new RenderPass(scene, camera);
+
+  const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    1.5,
+    0.4,
+    0.85
+  );
+  bloomPass.threshold = params.bloomThreshold;
+  bloomPass.strength = params.bloomStrength;
+  bloomPass.radius = params.bloomRadius;
+
+  bloomComposer = new EffectComposer(renderer);
+  bloomComposer.renderToScreen = false;
+  bloomComposer.addPass(renderScene);
+  bloomComposer.addPass(bloomPass);
+
+  // final pass
+
+  const finalPass = new ShaderPass(
+    new THREE.ShaderMaterial({
+      uniforms: {
+        baseTexture: { value: null },
+        bloomTexture: { value: bloomComposer.renderTarget2.texture },
+      },
+      vertexShader: document.getElementById('vertexshader').textContent,
+      fragmentShader: document.getElementById('fragmentshader').textContent,
+      defines: {},
+    }),
+    'baseTexture'
+  );
+  finalPass.needsSwap = true;
+
+  // composer
+
+  finalComposer = new EffectComposer(renderer);
+  finalComposer.addPass(renderScene);
+  finalComposer.addPass(finalPass);
+
+  addParticleCloud();
+  addHut();
+  addMovie();
+  render();
+}
+
+function addParticleCloud() {
+  for (let x = -particleCount; x < particleCount; x += particleRes) {
+    for (let y = -particleCount; y < particleCount; y += particleRes) {
+      for (let z = -particleCount; z < particleCount; z += particleRes) {
+        const val = noise(x * 0.2, y * 0.2, z * 0.2);
+
+        if (val < 0.3) {
+          kinkyArray.push(
+            x * particleSpread + particleRandOffset(),
+            y * particleSpread + particleRandOffset(),
+            z * particleSpread + particleRandOffset()
+          );
+        }
+      }
+    }
+  }
+
+  let vertices = new Float32Array(kinkyArray);
+
+  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+
+  const material = new THREE.PointsMaterial({
+    color: colors.stars,
+    size: particleSize,
+  });
+
+  let stars = new THREE.Points(geometry, material);
+  stars.layers.enable(BLOOM_SCENE);
+  scene.add(stars);
+}
+
+function addHut() {
   if (!house.hidden) {
     const loader = new GLTFLoader();
     const dracoLoader = new DRACOLoader();
@@ -136,6 +298,7 @@ function init() {
           hut.rotation.x = Math.PI / 2;
           hut.rotation.z = 20;
           hut.translateZ(50);
+          hut.layers.enable(BLOOM_SCENE);
           scene.add(hut);
         }
 
@@ -161,70 +324,9 @@ function init() {
     playButton.innerHTML = 'Press to play';
     loaded = true;
   }
+}
 
-  /* --- camera --- */
-
-  HEIGHT = window.innerHeight;
-  WIDTH = window.innerWidth;
-  windowHalfX = WIDTH / 2;
-  windowHalfY = HEIGHT / 2;
-
-  aspectRatio = WIDTH / HEIGHT;
-  nearPlane = 1;
-  farPlane = 5000;
-
-  camera = new THREE.PerspectiveCamera(
-    fieldOfView,
-    aspectRatio,
-    nearPlane,
-    farPlane
-  );
-  camera.position.z = cameraZ;
-  camera.position.y = cameraY;
-
-  /* --- scene --- */
-
-  scene = new THREE.Scene();
-  scene.background = colors.background;
-  // scene.fog = new THREE.FogExp2(colors.blackPoint, fogDensity);
-
-  container = document.createElement('div');
-  document.body.appendChild(container);
-  document.body.style.margin = 0;
-  document.body.style.overflow = 'hidden';
-
-  /* --- particle cloud --- */
-  for (let x = -particleCount; x < particleCount; x += particleRes) {
-    for (let y = -particleCount; y < particleCount; y += particleRes) {
-      for (let z = -particleCount; z < particleCount; z += particleRes) {
-        const val = noise(x * 0.2, y * 0.2, z * 0.2);
-
-        if (val < 0.3) {
-          kinkyArray.push(
-            x * particleSpread + particleRandOffset(),
-            y * particleSpread + particleRandOffset(),
-            z * particleSpread + particleRandOffset()
-          );
-        }
-      }
-    }
-  }
-
-  calcVertexPositions();
-
-  /* --- lights --- */
-
-  const directionalLight = new THREE.DirectionalLight(colors.whitePoint, 2);
-  directionalLight.castShadow = true;
-  directionalLight.shadow.radius = 8;
-  directionalLight.position.set(-200, 200, 100);
-  scene.add(directionalLight);
-
-  const ambientLight = new THREE.AmbientLight(colors.shadow);
-  scene.add(ambientLight);
-
-  /* --- movie projection --- */
-
+function addMovie() {
   let videoElem = document.getElementById('video');
 
   playButtonWrapper.onclick = function () {
@@ -240,72 +342,9 @@ function init() {
   let videoMesh = new THREE.Mesh(videoGeometry, videoMaterial);
   videoMesh.translateZ(video.position.z);
   scene.add(videoMesh);
-
-  /* --- frame rate stats. useful for debugging. --- */
-
-  if (debug) {
-    stats = new Stats();
-    stats.domElement.style.position = 'absolute';
-    stats.domElement.style.top = '0.5rem';
-    stats.domElement.style.left = '0.5rem';
-    container.appendChild(stats.domElement);
-  }
-
-  /* --- camera controls --- */
-
-  controls = new OrbitControls(camera, container);
-  controls.enableDamping = true;
-  controls.autoRotate = false;
-  controls.enableZoom = true;
-  controls.enablePan = false;
-  controls.zoomSpeed = zoomSpeed;
-  controls.enableRotate = false;
-  controls.dampingFactor = 0.005;
-  // controls.minAzimuthAngle = -Math.PI * 0.5;
-  // controls.maxAzimuthAngle = Math.PI * 0.5;
-  // controls.minPolarAngle = -Math.PI;
-  // controls.maxPolarAngle = Math.PI;
-  // controls.target = video.position;
-  controls.maxDistance = cameraZ;
-  controls.minDistance = video.cameraOffset;
-
-  /* --- event listeners --- */
-
-  window.addEventListener('resize', onWindowResize, false);
-
-  /* --- renderer --- */
-
-  renderer = new THREE.WebGLRenderer({ antialias: false });
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-
-  container.appendChild(renderer.domElement);
-
-  /* --- post processing --- */
-
-  composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
-
-  const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    1.5,
-    0.4,
-    0.85
-  );
-
-  bloomPass.renderToScreen = true;
-  composer.addPass(bloomPass);
-
-  bloomPass.threshold = params.bloomThreshold;
-  bloomPass.strength = params.bloomStrength;
-  bloomPass.radius = params.bloomRadius;
 }
 
-function animate() {
-  requestAnimationFrame(animate);
-  composer.render();
-  controls.update();
-
+function render() {
   if (debug) {
     console.log({
       'Scene polycount': renderer.info.render.triangles,
@@ -313,32 +352,73 @@ function animate() {
       'Textures in Memory': renderer.info.memory.textures,
       'Geometries in Memory': renderer.info.memory.geometries,
     });
-
     stats.update();
+  }
+
+  requestAnimationFrame(render);
+  controls.update();
+
+  // mask together both bloom and non-bloom layers
+  scene.traverse(darkenNonBloomed);
+  bloomComposer.render();
+  scene.traverse(restoreMaterial);
+
+  finalComposer.render();
+}
+
+// objects
+
+function addBloomElem() {
+  const geometry = new THREE.IcosahedronGeometry(1, 15);
+
+  for (let i = 0; i < 50; i++) {
+    const color = new THREE.Color();
+    color.setHSL(Math.random(), 0.7, Math.random() * 0.2 + 0.05);
+    const material = new THREE.MeshBasicMaterial({ color: color });
+    const sphere = new THREE.Mesh(geometry, material);
+    sphere.position.x = Math.random() * 10 - 5;
+    sphere.position.y = Math.random() * 10 - 5;
+    sphere.position.z = Math.random() * 10 - 5;
+    sphere.position.normalize().multiplyScalar(Math.random() * 4.0 + 2.0);
+    sphere.scale.setScalar(Math.random() * Math.random() + 0.5);
+    sphere.layers.enable(BLOOM_SCENE);
+    scene.add(sphere);
   }
 }
 
-function onWindowResize() {
-  windowHalfX = window.innerWidth / 2;
-  windowHalfY = window.innerHeight / 2;
+function addFlatElem() {
+  const geometry = new THREE.IcosahedronGeometry(1, 15);
+  const material = new THREE.MeshBasicMaterial({ color: 'white' });
+  const sphere = new THREE.Mesh(geometry, material);
+  sphere.scale.setScalar(Math.random() * Math.random() + 0.5);
+  scene.add(sphere);
+}
 
-  camera.aspect = window.innerWidth / window.innerHeight;
+// funky selective masking bloom functions, better not touch
+
+function darkenNonBloomed(obj) {
+  if (obj.isMesh && bloomLayer.test(obj.layers) === false) {
+    materials[obj.uuid] = obj.material;
+    obj.material = darkMaterial;
+  }
+}
+
+function restoreMaterial(obj) {
+  if (materials[obj.uuid]) {
+    obj.material = materials[obj.uuid];
+    delete materials[obj.uuid];
+  }
+}
+
+// resize
+
+window.onresize = function () {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  camera.aspect = width / height;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  composer.setSize(window.innerWidth, window.innerHeight);
-}
-
-function calcVertexPositions() {
-  let vertices = new Float32Array(kinkyArray);
-
-  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-
-  const material = new THREE.PointsMaterial({
-    color: colors.stars,
-    size: particleSize,
-  });
-
-  let stars = new THREE.Points(geometry, material);
-
-  scene.add(stars);
-}
+  renderer.setSize(width, height);
+  bloomComposer.setSize(width, height);
+  finalComposer.setSize(width, height);
+  render();
+};
