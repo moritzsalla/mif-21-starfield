@@ -2,11 +2,10 @@ import * as THREE from 'three';
 
 const playButtonWrapper = document.querySelector('.play-button-wrapper');
 
-const position = new THREE.Vector3(0, 0, -400);
 const height = 240;
 const width = 320;
 
-export function add(scene) {
+export function add(scene, position) {
   const videoElem = document.getElementById('video');
 
   playButtonWrapper.onclick = function () {

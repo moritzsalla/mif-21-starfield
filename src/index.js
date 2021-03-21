@@ -16,35 +16,6 @@ import { add as addParticleCloud } from './objects/particleCloud';
 import { add as addMovie } from './objects/movie';
 import { add as addHut } from './objects/hutGLB';
 
-const debug = false;
-const zoomSpeed = 0.3;
-const fieldOfView = 50;
-const cameraZ = 2000; // how high up is the camera's starting position?
-const cameraY = 0; // how high up is the camera's starting position?
-
-noiseSeed(20);
-
-const colors = {
-  stars: '#8DFA70', // #8DFA70
-  background: new THREE.Color('rgb(0, 2, 0)'),
-};
-
-// bloom/glow
-let bloomComposer, finalComposer;
-const BLOOM_SCENE = 1;
-const bloomLayer = new THREE.Layers();
-bloomLayer.set(BLOOM_SCENE);
-
-const params = {
-  exposure: 0,
-  bloomStrength: 2.5,
-  bloomThreshold: 0,
-  bloomRadius: 0,
-};
-
-const darkMaterial = new THREE.MeshBasicMaterial({ color: 'black' });
-const materials = {};
-
 let container,
   controls,
   scene,
@@ -59,9 +30,52 @@ let container,
   farPlane,
   stats;
 
+const debug = false;
+const fieldOfView = 50;
+const videoPosition = new THREE.Vector3(0, 0, -400);
+
+const colors = {
+  stars: '#8DFA70',
+  background: new THREE.Color('rgb(0, 2, 0)'),
+};
+
+let bloomComposer, finalComposer;
+const BLOOM_SCENE = 1;
+const bloomLayer = new THREE.Layers();
+bloomLayer.set(BLOOM_SCENE);
+
+const bloomParams = {
+  exposure: 0,
+  bloomStrength: 2.5,
+  bloomThreshold: 0,
+  bloomRadius: 0,
+};
+
+const darkMaterial = new THREE.MeshBasicMaterial({ color: 'black' });
+const materials = {};
+
+noiseSeed(20);
 init();
 
 function init() {
+  /* --- renderer --- */
+  container = document.createElement('div');
+  document.body.appendChild(container);
+  document.body.style.margin = 0;
+  document.body.style.overflow = 'hidden';
+
+  renderer = new THREE.WebGLRenderer({ antialias: false });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  // renderer.toneMapping = THREE.ReinhardToneMapping;
+  container.appendChild(renderer.domElement);
+
+  /* --- scene --- */
+
+  scene = new THREE.Scene();
+  scene.background = colors.background;
+  // scene.fog = new THREE.FogExp2(colors.blackPoint, fogDensity);
+
   /* --- camera --- */
 
   HEIGHT = window.innerHeight;
@@ -79,19 +93,27 @@ function init() {
     nearPlane,
     farPlane
   );
-  camera.position.z = cameraZ;
-  camera.position.y = cameraY;
 
-  /* --- scene --- */
+  controls = new OrbitControls(camera, container);
 
-  scene = new THREE.Scene();
-  scene.background = colors.background;
-  // scene.fog = new THREE.FogExp2(colors.blackPoint, fogDensity);
+  controls.enableRotate = true;
+  controls.autoRotate = false;
+  controls.enableZoom = true;
+  controls.enablePan = true;
+  controls.zoomSpeed = 0.3;
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.01;
+  controls.minAzimuthAngle = -Math.PI * 0.5;
+  controls.maxAzimuthAngle = Math.PI * 0.5;
+  controls.minPolarAngle = -Math.PI;
+  controls.maxPolarAngle = Math.PI;
+  controls.target = videoPosition;
+  controls.maxDistance = 2000;
+  controls.minDistance = 0;
 
-  container = document.createElement('div');
-  document.body.appendChild(container);
-  document.body.style.margin = 0;
-  document.body.style.overflow = 'hidden';
+  camera.position.z = 2000; // how high up is the camera's starting position?
+  camera.position.y = 0; // how high up is the camera's starting position?
+  controls.update();
 
   /* --- lights --- */
 
@@ -114,33 +136,6 @@ function init() {
     container.appendChild(stats.domElement);
   }
 
-  /* --- camera controls --- */
-
-  controls = new OrbitControls(camera, container);
-
-  controls.enableRotate = true;
-  controls.autoRotate = true;
-  controls.enableZoom = true;
-  controls.enablePan = true;
-  controls.zoomSpeed = zoomSpeed;
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.005;
-  // minAzimuthAngle = -Math.PI * 0.5;
-  // maxAzimuthAngle = Math.PI * 0.5;
-  // minPolarAngle = -Math.PI;
-  // maxPolarAngle = Math.PI;
-  // target = video.position;
-  // maxDistance = cameraZ;
-  // minDistance = video.cameraOffset;
-
-  /* --- renderer --- */
-
-  renderer = new THREE.WebGLRenderer({ antialias: false });
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  // renderer.toneMapping = THREE.ReinhardToneMapping;
-  container.appendChild(renderer.domElement);
-
   /* --- post processing --- */
   const renderScene = new RenderPass(scene, camera);
 
@@ -150,9 +145,9 @@ function init() {
     0.4,
     0.85
   );
-  bloomPass.threshold = params.bloomThreshold;
-  bloomPass.strength = params.bloomStrength;
-  bloomPass.radius = params.bloomRadius;
+  bloomPass.threshold = bloomParams.bloomThreshold;
+  bloomPass.strength = bloomParams.bloomStrength;
+  bloomPass.radius = bloomParams.bloomRadius;
 
   bloomComposer = new EffectComposer(renderer);
   bloomComposer.renderToScreen = false;
@@ -185,10 +180,12 @@ function init() {
 
   addParticleCloud(colors, BLOOM_SCENE, scene);
   addHut(colors, BLOOM_SCENE, scene);
-  addMovie(scene);
+  addMovie(scene, videoPosition);
 
   render();
 }
+
+/* ----- */
 
 function render() {
   if (debug) {
@@ -204,15 +201,12 @@ function render() {
   requestAnimationFrame(render);
   controls.update();
 
-  // mask together both bloom and non-bloom layers
   scene.traverse(darkenNonBloomed);
   bloomComposer.render();
   scene.traverse(restoreMaterial);
 
   finalComposer.render();
 }
-
-// funky selective masking bloom functions, better not touch
 
 function darkenNonBloomed(obj) {
   if (obj.isMesh && bloomLayer.test(obj.layers) === false) {
@@ -227,8 +221,6 @@ function restoreMaterial(obj) {
     delete materials[obj.uuid];
   }
 }
-
-// resize
 
 window.onresize = function () {
   const width = window.innerWidth;
