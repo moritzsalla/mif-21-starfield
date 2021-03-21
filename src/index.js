@@ -21,13 +21,13 @@ const fieldOfView = 50;
 const cameraZ = 2000; // how high up is the camera's starting position?
 const cameraY = 0; // how high up is the camera's starting position?
 
-const particleSize = 4;
-const particleCount = 50; // adding more particles impacts performance
-const particleSpread = 30;
+const particleSize = 3;
+const particleCount = 30; // adding more particles impacts performance
+const particleSpread = 50;
 const particleRes = 1;
 const particleRandOffset = () => random(-50, 50);
 
-// noiseSeed(1);
+noiseSeed(20);
 
 const colors = {
   stars: '#8DFA70', // #8DFA70
@@ -46,7 +46,7 @@ const video = {
 // bloom/glow
 const params = {
   exposure: 1,
-  bloomStrength: 2,
+  bloomStrength: 2.5,
   bloomThreshold: 0,
   bloomRadius: 0,
 };
@@ -134,6 +134,8 @@ function init() {
 
         if (house.vertices) {
           hut.rotation.x = Math.PI / 2;
+          hut.rotation.z = 20;
+          hut.translateZ(50);
           scene.add(hut);
         }
 
@@ -169,7 +171,7 @@ function init() {
 
   aspectRatio = WIDTH / HEIGHT;
   nearPlane = 1;
-  farPlane = 3000;
+  farPlane = 5000;
 
   camera = new THREE.PerspectiveCamera(
     fieldOfView,
@@ -195,7 +197,7 @@ function init() {
   for (let x = -particleCount; x < particleCount; x += particleRes) {
     for (let y = -particleCount; y < particleCount; y += particleRes) {
       for (let z = -particleCount; z < particleCount; z += particleRes) {
-        const val = noise(x * 0.1, y * 0.1, z * 0.1);
+        const val = noise(x * 0.2, y * 0.2, z * 0.2);
 
         if (val < 0.3) {
           kinkyArray.push(
@@ -207,6 +209,8 @@ function init() {
       }
     }
   }
+
+  calcVertexPositions();
 
   /* --- lights --- */
 
@@ -255,7 +259,7 @@ function init() {
   controls.enableZoom = true;
   controls.enablePan = false;
   controls.zoomSpeed = zoomSpeed;
-  controls.enableRotate = true;
+  controls.enableRotate = false;
   controls.dampingFactor = 0.005;
   // controls.minAzimuthAngle = -Math.PI * 0.5;
   // controls.maxAzimuthAngle = Math.PI * 0.5;
@@ -298,11 +302,6 @@ function init() {
 }
 
 function animate() {
-  const frameCount = renderer.info.render.frame;
-  kinkyArray = kinkyArray.map((vertex) => (vertex += random(-1, 1)));
-
-  calcVertexPositions();
-
   requestAnimationFrame(animate);
   composer.render();
   controls.update();
