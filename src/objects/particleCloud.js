@@ -1,27 +1,35 @@
 import * as THREE from 'three';
-import { noise } from '../math/noise';
+import { noise, noiseSeed } from '../math/noise';
 import { random } from '../math/random';
 
-const particleSize = 3;
-const particleCount = 30; // adding more particles impacts performance
-const particleSpread = 50;
-const particleRes = 1;
-const particleRandOffset = () => random(-50, 50);
+const particleSize = 3; // dot size
+const particleCount = 80; // adding more particles impacts performance
+const cloudSize = 15;
+const noiseResolution = 0.1;
+const noiseStructure = 50;
 
+noiseSeed(1);
+
+let stars;
 let geometry = new THREE.BufferGeometry();
 let kinkyArray = []; // better to used typed array here, but performance is decent
+const calcRandOffset = () => random(-noiseStructure, noiseStructure);
 
 export function add(colors, BLOOM_SCENE, scene) {
-  for (let x = -particleCount; x < particleCount; x += particleRes) {
-    for (let y = -particleCount; y < particleCount; y += particleRes) {
-      for (let z = -particleCount; z < particleCount; z += particleRes) {
-        const val = noise(x * 0.2, y * 0.2, z * 0.2);
+  for (let x = -particleCount; x < particleCount; x++) {
+    for (let y = -particleCount; y < particleCount; y++) {
+      for (let z = -particleCount; z < particleCount; z++) {
+        const val = noise(
+          x * noiseResolution,
+          y * noiseResolution,
+          z * noiseResolution
+        );
 
-        if (val < 0.3) {
+        if (val < 0.2) {
           kinkyArray.push(
-            x * particleSpread + particleRandOffset(),
-            y * particleSpread + particleRandOffset(),
-            z * particleSpread + particleRandOffset()
+            x * cloudSize + calcRandOffset(),
+            y * cloudSize + calcRandOffset(),
+            z * cloudSize + calcRandOffset()
           );
         }
       }
@@ -37,7 +45,12 @@ export function add(colors, BLOOM_SCENE, scene) {
     size: particleSize,
   });
 
-  let stars = new THREE.Points(geometry, material);
+  stars = new THREE.Points(geometry, material);
   stars.layers.enable(BLOOM_SCENE);
   scene.add(stars);
+}
+
+export function rotate() {
+  stars.rotation.z += 0.0001;
+  stars.rotation.y += 0.0001;
 }

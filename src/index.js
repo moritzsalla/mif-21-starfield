@@ -1,20 +1,19 @@
 // add stars to group, give gro player, make layer bloom
 
-import './styles.css';
-import * as THREE from 'three';
-import { random } from './math/random';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { map } from './math/map';
-import { noise, noiseDetail, noiseSeed } from './math/noise';
 import Stats from 'stats.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
-
-import { add as addParticleCloud } from './objects/particleCloud';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
+import { add as addHut, rotate as rotateHut } from './objects/hutGLB';
 import { add as addMovie } from './objects/movie';
-import { add as addHut } from './objects/hutGLB';
+import {
+  add as addParticleCloud,
+  rotate as rotatePointCloud,
+} from './objects/particleCloud';
+import './styles.css';
 
 let container,
   controls,
@@ -30,13 +29,13 @@ let container,
   farPlane,
   stats;
 
-const debug = false;
-const fieldOfView = 50;
-const videoPosition = new THREE.Vector3(0, 0, -400);
+const debug = true;
+const fieldOfView = 60;
+const videoPosition = new THREE.Vector3(0, 0, -1000);
 
 const colors = {
   stars: '#8DFA70',
-  background: new THREE.Color('rgb(0, 2, 0)'),
+  background: 'rgb(0,2,0)',
 };
 
 let bloomComposer, finalComposer;
@@ -46,7 +45,7 @@ bloomLayer.set(BLOOM_SCENE);
 
 const bloomParams = {
   exposure: 0,
-  bloomStrength: 2.5,
+  bloomStrength: 2,
   bloomThreshold: 0,
   bloomRadius: 0,
 };
@@ -54,7 +53,6 @@ const bloomParams = {
 const darkMaterial = new THREE.MeshBasicMaterial({ color: 'black' });
 const materials = {};
 
-noiseSeed(20);
 init();
 
 function init() {
@@ -96,11 +94,11 @@ function init() {
 
   controls = new OrbitControls(camera, container);
 
-  controls.enableRotate = true;
+  controls.enableRotate = false;
   controls.autoRotate = false;
   controls.enableZoom = true;
-  controls.enablePan = true;
-  controls.zoomSpeed = 0.3;
+  controls.enablePan = false;
+  controls.zoomSpeed = 0.2;
   controls.enableDamping = true;
   controls.dampingFactor = 0.01;
   controls.minAzimuthAngle = -Math.PI * 0.5;
@@ -108,10 +106,10 @@ function init() {
   controls.minPolarAngle = -Math.PI;
   controls.maxPolarAngle = Math.PI;
   controls.target = videoPosition;
-  controls.maxDistance = 2000;
-  controls.minDistance = 0;
+  controls.maxDistance = 3000;
+  controls.minDistance = 500;
 
-  camera.position.z = 2000; // how high up is the camera's starting position?
+  camera.position.z = 3000; // how high up is the camera's starting position?
   camera.position.y = 0; // how high up is the camera's starting position?
   controls.update();
 
@@ -178,9 +176,9 @@ function init() {
 
   /* --- add objects --- */
 
+  addMovie(scene, videoPosition);
   addParticleCloud(colors, BLOOM_SCENE, scene);
   addHut(colors, BLOOM_SCENE, scene);
-  addMovie(scene, videoPosition);
 
   render();
 }
@@ -189,14 +187,17 @@ function init() {
 
 function render() {
   if (debug) {
-    console.log({
-      'Scene polycount': renderer.info.render.triangles,
-      'Active Drawcalls': renderer.info.render.calls,
-      'Textures in Memory': renderer.info.memory.textures,
-      'Geometries in Memory': renderer.info.memory.geometries,
-    });
+    // console.log({
+    //   'Scene polycount': renderer.info.render.triangles,
+    //   'Active Drawcalls': renderer.info.render.calls,
+    //   'Textures in Memory': renderer.info.memory.textures,
+    //   'Geometries in Memory': renderer.info.memory.geometries,
+    // });
     stats.update();
   }
+
+  rotateHut();
+  rotatePointCloud();
 
   requestAnimationFrame(render);
   controls.update();

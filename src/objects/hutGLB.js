@@ -9,9 +9,9 @@ const playButtonWrapper = document.querySelector('.play-button-wrapper');
 
 const hut = new THREE.Group();
 
+const particleSize = 2;
 const showVertices = true;
 const showMesh = false;
-const particleSize = 3;
 
 export function add(colors, BLOOM_SCENE, scene) {
   const loader = new GLTFLoader();
@@ -26,7 +26,7 @@ export function add(colors, BLOOM_SCENE, scene) {
 
       model.traverse((elem) => {
         if (elem.isMesh) {
-          const { length } = elem.geometry.index.array;
+          const length = elem.geometry.index.array.length;
 
           const geometry = new THREE.BufferGeometry();
           let vertices = new Float32Array(length);
@@ -62,7 +62,8 @@ export function add(colors, BLOOM_SCENE, scene) {
       if (showVertices) {
         hut.rotation.x = Math.PI / 2;
         hut.rotation.z = 20;
-        hut.translateZ(50);
+        hut.translateZ(100);
+        hut.scale.set(2, 2, 2);
         hut.layers.enable(BLOOM_SCENE);
         scene.add(hut);
       }
@@ -81,4 +82,8 @@ export function add(colors, BLOOM_SCENE, scene) {
       console.error(error);
     }
   );
+}
+
+export function rotate() {
+  hut.rotation.z += 0.002;
 }
