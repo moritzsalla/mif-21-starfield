@@ -26,7 +26,7 @@ export function add(colors, BLOOM_SCENE, scene) {
 
       model.traverse((elem) => {
         if (elem.isMesh) {
-          const { length } = elem.geometry.index.array;
+          const length = elem.geometry.index.array.length;
 
           const geometry = new THREE.BufferGeometry();
           let vertices = new Float32Array(length);

@@ -30,9 +30,9 @@ let container,
   farPlane,
   stats;
 
-const debug = false;
+const debug = true;
 const fieldOfView = 50;
-const videoPosition = new THREE.Vector3(0, 0, -400);
+const videoPosition = new THREE.Vector3(0, 0, -1000);
 
 const colors = {
   stars: '#8DFA70',
@@ -46,7 +46,7 @@ bloomLayer.set(BLOOM_SCENE);
 
 const bloomParams = {
   exposure: 0,
-  bloomStrength: 2.5,
+  bloomStrength: 2,
   bloomThreshold: 0,
   bloomRadius: 0,
 };
@@ -99,7 +99,7 @@ function init() {
   controls.enableRotate = true;
   controls.autoRotate = false;
   controls.enableZoom = true;
-  controls.enablePan = true;
+  controls.enablePan = false;
   controls.zoomSpeed = 0.3;
   controls.enableDamping = true;
   controls.dampingFactor = 0.01;
@@ -178,9 +178,9 @@ function init() {
 
   /* --- add objects --- */
 
+  addMovie(scene, videoPosition);
   addParticleCloud(colors, BLOOM_SCENE, scene);
   addHut(colors, BLOOM_SCENE, scene);
-  addMovie(scene, videoPosition);
 
   render();
 }
@@ -189,12 +189,12 @@ function init() {
 
 function render() {
   if (debug) {
-    console.log({
-      'Scene polycount': renderer.info.render.triangles,
-      'Active Drawcalls': renderer.info.render.calls,
-      'Textures in Memory': renderer.info.memory.textures,
-      'Geometries in Memory': renderer.info.memory.geometries,
-    });
+    // console.log({
+    //   'Scene polycount': renderer.info.render.triangles,
+    //   'Active Drawcalls': renderer.info.render.calls,
+    //   'Textures in Memory': renderer.info.memory.textures,
+    //   'Geometries in Memory': renderer.info.memory.geometries,
+    // });
     stats.update();
   }
 
