@@ -7,6 +7,8 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
+import { clamp } from './math/clamp';
+import { map } from './math/map';
 import { add as addHut, rotate as rotateHut } from './objects/hutGLB';
 import { add as addMovie } from './objects/movie';
 import {
@@ -50,8 +52,16 @@ const bloomParams = {
   bloomRadius: 0,
 };
 
+const fogDensity = 0.00075;
+
 const darkMaterial = new THREE.MeshBasicMaterial({ color: 'black' });
 const materials = {};
+
+let mouseX = window.innerWidth / 2;
+let mouseY = window.innerHeight / 2;
+let x = 1;
+let y = 1;
+let easing = 0.1;
 
 init();
 
@@ -65,14 +75,13 @@ function init() {
   renderer = new THREE.WebGLRenderer({ antialias: false });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
-  // renderer.toneMapping = THREE.ReinhardToneMapping;
   container.appendChild(renderer.domElement);
 
   /* --- scene --- */
 
   scene = new THREE.Scene();
   scene.background = colors.background;
-  // scene.fog = new THREE.FogExp2(colors.blackPoint, fogDensity);
+  scene.fog = new THREE.FogExp2(colors.background, fogDensity);
 
   /* --- camera --- */
 
@@ -83,7 +92,7 @@ function init() {
 
   aspectRatio = WIDTH / HEIGHT;
   nearPlane = 1;
-  farPlane = 5000;
+  farPlane = 2400;
 
   camera = new THREE.PerspectiveCamera(
     fieldOfView,
@@ -91,6 +100,8 @@ function init() {
     nearPlane,
     farPlane
   );
+
+  camera.position.set(0, 0, 2000);
 
   controls = new OrbitControls(camera, container);
 
@@ -108,10 +119,6 @@ function init() {
   controls.target = videoPosition;
   controls.maxDistance = 3000;
   controls.minDistance = 500;
-
-  camera.position.z = 3000; // how high up is the camera's starting position?
-  camera.position.y = 0; // how high up is the camera's starting position?
-  controls.update();
 
   /* --- lights --- */
 
@@ -186,28 +193,21 @@ function init() {
 /* ----- */
 
 function render() {
-  if (debug) {
-    // console.log({
-    //   'Scene polycount': renderer.info.render.triangles,
-    //   'Active Drawcalls': renderer.info.render.calls,
-    //   'Textures in Memory': renderer.info.memory.textures,
-    //   'Geometries in Memory': renderer.info.memory.geometries,
-    // });
-    stats.update();
-  }
+  if (debug) stats.update();
 
+  addMouseWiggle();
   rotateHut();
   rotatePointCloud();
 
   requestAnimationFrame(render);
   controls.update();
-
   scene.traverse(darkenNonBloomed);
   bloomComposer.render();
   scene.traverse(restoreMaterial);
-
   finalComposer.render();
 }
+
+/* ----- */
 
 function darkenNonBloomed(obj) {
   if (obj.isMesh && bloomLayer.test(obj.layers) === false) {
@@ -223,6 +223,26 @@ function restoreMaterial(obj) {
   }
 }
 
+/* ----- */
+
+function addMouseWiggle() {
+  let targetX = mouseX;
+  let dx = targetX - x;
+  x += dx * easing;
+
+  let targetY = mouseY;
+  let dy = targetY - y;
+  y += dy * easing;
+
+  const offX = map(x, 0, window.innerWidth, -10, 10);
+  const offY = map(y, 0, window.innerHeight, 10, -10);
+
+  camera.position.x = clamp(offX, -10, 10);
+  camera.position.y = clamp(offY, -10, 10);
+}
+
+/* ----- */
+
 window.onresize = function () {
   const width = window.innerWidth;
   const height = window.innerHeight;
@@ -232,4 +252,9 @@ window.onresize = function () {
   bloomComposer.setSize(width, height);
   finalComposer.setSize(width, height);
   render();
+};
+
+onmousemove = function (e) {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
 };

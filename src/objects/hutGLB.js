@@ -85,5 +85,5 @@ export function add(colors, BLOOM_SCENE, scene) {
 }
 
 export function rotate() {
-  hut.rotation.z += 0.002;
+  hut.rotation.z += 0.0015;
 }

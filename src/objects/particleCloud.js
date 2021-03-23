@@ -1,15 +1,16 @@
 import * as THREE from 'three';
-import { noise, noiseSeed } from '../math/noise';
+import { noise, noiseSeed, noiseDetail } from '../math/noise';
 import { random } from '../math/random';
 
-const particleSize = 2; // dot size
-const particleCount = 80; // adding more particles impacts performance
-const cloudSize = 15;
-const noiseResolution = 0.1;
-const noiseStructure = 50;
-const noiseThresh = 0.25;
+const particleSize = 2;
+const particleCount = 30;
+const cloudSize = 50;
+const noiseResolution = 0.2;
+const noiseThresh = 0.35;
+const noiseStructure = 50; // random offset
 
-noiseSeed(100);
+noiseSeed(10);
+noiseDetail(0, 0);
 
 let stars;
 let geometry = new THREE.BufferGeometry();
@@ -52,6 +53,6 @@ export function add(colors, BLOOM_SCENE, scene) {
 }
 
 export function rotate() {
-  stars.rotation.z += 0.0001;
+  // stars.rotation.z += 0.0002;
   stars.rotation.y += 0.0001;
 }
