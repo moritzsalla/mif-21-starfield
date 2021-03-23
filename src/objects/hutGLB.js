@@ -62,8 +62,8 @@ export function add(colors, BLOOM_SCENE, scene) {
       if (showVertices) {
         hut.rotation.x = Math.PI / 2;
         hut.rotation.z = 20;
-        hut.translateZ(100);
-        hut.scale.set(2, 2, 2);
+        hut.translateZ(150);
+        hut.scale.set(3, 3, 3);
         hut.layers.enable(BLOOM_SCENE);
         scene.add(hut);
       }

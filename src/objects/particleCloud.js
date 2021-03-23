@@ -2,13 +2,14 @@ import * as THREE from 'three';
 import { noise, noiseSeed } from '../math/noise';
 import { random } from '../math/random';
 
-const particleSize = 3; // dot size
+const particleSize = 2; // dot size
 const particleCount = 80; // adding more particles impacts performance
 const cloudSize = 15;
 const noiseResolution = 0.1;
 const noiseStructure = 50;
+const noiseThresh = 0.25;
 
-noiseSeed(1);
+noiseSeed(100);
 
 let stars;
 let geometry = new THREE.BufferGeometry();
@@ -25,7 +26,7 @@ export function add(colors, BLOOM_SCENE, scene) {
           z * noiseResolution
         );
 
-        if (val < 0.2) {
+        if (val < noiseThresh) {
           kinkyArray.push(
             x * cloudSize + calcRandOffset(),
             y * cloudSize + calcRandOffset(),
