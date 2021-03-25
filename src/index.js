@@ -13,7 +13,7 @@ import {
   add as addParticleCloud,
   rotate as rotatePointCloud,
 } from './particleCloud';
-import './styles.css';
+import './styles/main.css';
 import vertShader from './assets/glsl/bloom.vert';
 import fragShader from './assets/glsl/bloom.frag';
 
