@@ -1,5 +1,3 @@
-// add stars to group, give gro player, make layer bloom
-
 import Stats from 'stats.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -7,21 +5,47 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
+import { add as addHut, rotate as rotateHut } from './hutGLB';
 import { clamp } from './math/clamp';
 import { map } from './math/map';
-import { add as addHut, rotate as rotateHut } from './objects/hutGLB';
-import { add as addMovie } from './objects/movie';
+import { add as addMovie } from './movie';
 import {
   add as addParticleCloud,
   rotate as rotatePointCloud,
-} from './objects/particleCloud';
+} from './particleCloud';
 import './styles.css';
+import vertShader from './assets/glsl/bloom.vert';
+import fragShader from './assets/glsl/bloom.frag';
+
+const debug = false;
+const fogDensity = 0.00075;
+const fieldOfView = 60;
+
+const videoPosition = new THREE.Vector3(0, 0, -1000);
+
+const BLOOM_SCENE = 1;
+const bloomLayer = new THREE.Layers();
+bloomLayer.set(BLOOM_SCENE);
+
+const colors = {
+  stars: '#8DFA70',
+  background: 'rgb(0,2,0)',
+};
+
+const bloomParams = {
+  exposure: 0,
+  bloomStrength: 2,
+  bloomThreshold: 0,
+  bloomRadius: 0,
+};
 
 let container,
   controls,
   scene,
   camera,
   renderer,
+  bloomComposer,
+  finalComposer,
   HEIGHT,
   WIDTH,
   aspectRatio,
@@ -31,32 +55,8 @@ let container,
   farPlane,
   stats;
 
-const debug = true;
-const fieldOfView = 60;
-const videoPosition = new THREE.Vector3(0, 0, -1000);
-
-const colors = {
-  stars: '#8DFA70',
-  background: 'rgb(0,2,0)',
-};
-
-let bloomComposer, finalComposer;
-const BLOOM_SCENE = 1;
-const bloomLayer = new THREE.Layers();
-bloomLayer.set(BLOOM_SCENE);
-
-const bloomParams = {
-  exposure: 0,
-  bloomStrength: 2,
-  bloomThreshold: 0,
-  bloomRadius: 0,
-};
-
-const fogDensity = 0.00075;
-
 const darkMaterial = new THREE.MeshBasicMaterial({ color: 'black' });
 const materials = {};
-
 let mouseX = window.innerWidth / 2;
 let mouseY = window.innerHeight / 2;
 let x = 1;
@@ -159,16 +159,14 @@ function init() {
   bloomComposer.addPass(renderScene);
   bloomComposer.addPass(bloomPass);
 
-  /* --- final pass --- */
-
   const finalPass = new ShaderPass(
     new THREE.ShaderMaterial({
       uniforms: {
         baseTexture: { value: null },
         bloomTexture: { value: bloomComposer.renderTarget2.texture },
       },
-      vertexShader: document.getElementById('vertexshader').textContent,
-      fragmentShader: document.getElementById('fragmentshader').textContent,
+      vertexShader: vertShader,
+      fragmentShader: fragShader,
       defines: {},
     }),
     'baseTexture'
@@ -190,8 +188,6 @@ function init() {
   render();
 }
 
-/* ----- */
-
 function render() {
   if (debug) stats.update();
 
@@ -207,8 +203,6 @@ function render() {
   finalComposer.render();
 }
 
-/* ----- */
-
 function darkenNonBloomed(obj) {
   if (obj.isMesh && bloomLayer.test(obj.layers) === false) {
     materials[obj.uuid] = obj.material;
@@ -222,8 +216,6 @@ function restoreMaterial(obj) {
     delete materials[obj.uuid];
   }
 }
-
-/* ----- */
 
 function addMouseWiggle() {
   let targetX = mouseX;
@@ -240,8 +232,6 @@ function addMouseWiggle() {
   camera.position.x = clamp(offX, -10, 10);
   camera.position.y = clamp(offY, -10, 10);
 }
-
-/* ----- */
 
 window.onresize = function () {
   const width = window.innerWidth;

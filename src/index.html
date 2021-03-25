@@ -10,33 +10,12 @@
   </head>
   <body>
     <video id="video" loop playsinline style="display: none">
-      <source src="./videos/sample.mp4" type="video/mp4" />
-      Your browser does not support video
+      <source src="./assets/mp4/sample.mp4" type="video/mp4" />
+      Your browser does not support HTML video
     </video>
     <div class="play-button-wrapper">
       <h1 id="play-button"></h1>
     </div>
-
-    <script type="x-shader/x-vertex" id="vertexshader">
-      varying vec2 vUv;
-
-      void main() {
-      	vUv = uv;
-      	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-      }
-    </script>
-
-    <script type="x-shader/x-fragment" id="fragmentshader">
-      uniform sampler2D baseTexture;
-      uniform sampler2D bloomTexture;
-
-      varying vec2 vUv;
-
-      void main() {
-      	gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4( 1.0 ) * texture2D( bloomTexture, vUv ) );
-      }
-    </script>
-
     <script src="./index.js"></script>
   </body>
 </html>

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import glb from '../assets/hut-hd.glb';
+import glb from './assets/glb/hut.glb';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import decorder from 'three/examples/js/libs/draco/draco_decoder';

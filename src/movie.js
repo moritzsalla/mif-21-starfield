@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 
 const playButtonWrapper = document.querySelector('.play-button-wrapper');
-
 const height = 540;
 const width = 900;
 

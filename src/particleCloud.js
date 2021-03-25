@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { noise, noiseSeed, noiseDetail } from '../math/noise';
-import { random } from '../math/random';
+import { noise, noiseDetail, noiseSeed } from './math/noise';
+import { random } from './math/random';
 
 const particleSize = 2;
 const particleCount = 30;
