@@ -1,4 +1,4 @@
-Uses parcel bundler.
+Uses the [parcel bundler](https://parceljs.org/).
 
 To run locally, install the necessary npm packages by running `yarn install`. `yarn dev` will spin up a development server at `http://localhost:1234`.
 
