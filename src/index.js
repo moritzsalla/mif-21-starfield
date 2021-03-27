@@ -101,7 +101,7 @@ function init() {
     farPlane
   );
 
-  camera.position.set(0, 0, 2000);
+  camera.position.set(0, 0, 1800);
 
   controls = new OrbitControls(camera, container);
 
