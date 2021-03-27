@@ -1,9 +1,5 @@
-To compile and run this project locally, you will need to have installed [yarn](https://classic.yarnpkg.com/en/docs/install) or [npm](https://nodejs.org/en/download/) on your computer.
+Uses the [parcel bundler](https://parceljs.org/).
 
-Depending on which package manager you chose, use the terminal to `cd` into the project directory and run `yarn install` or `npm install`, respectively. This will install all necessary dependencies.
+To run locally, install the necessary npm packages by running `yarn install`. `yarn dev` will spin up a development server at `http://localhost:1234`.
 
-Once installation is complete, `yarn dev` or `npm run dev` will spin up a development server at `http://localhost:1234`.
-
-To run a production build, run `yarn build` or `npm build`. This will build to the `dist` folder.
-
-All necessary variables to customize the scene are located at the top of `src/index.js`.
+To create a production build, run `yarn build`. This will build static files to the `dist` folder.
