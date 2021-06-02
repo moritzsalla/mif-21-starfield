@@ -90,13 +90,14 @@ class Hut {
         // show mesh
         if (SHOW_MESH) scene.add(model);
 
-        // --- html state
+        // --- debugging end
 
-        HUD.loading();
+        // DOM state
+        HUD.loaded();
       },
       function (xhr) {
         // console.log(xhr)
-        HUD.loaded();
+        HUD.loading();
       },
       function (error) {
         throw new Error(error);

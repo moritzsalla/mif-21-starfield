@@ -3,7 +3,7 @@ html, body {
   font-weight: 400;
 }
 
-.play-button-wrapper {
+#play-button-wrapper {
   background: black;
   color: white;
   position: fixed;

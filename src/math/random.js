@@ -1,3 +1,10 @@
+/**
+ * Random function adapted from p5.
+ * @param min - Number: the lower bound (inclusive) (Optional)
+ * @param max - Number: the upper bound (exclusive) (Optional)
+ * @returns - Number: the random number
+ */
+
 export function random(min, max) {
   const rand = Math.random();
 

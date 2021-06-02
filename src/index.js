@@ -5,39 +5,17 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
+import fragShader from './assets/glsl/bloom.frag';
+import vertShader from './assets/glsl/bloom.vert';
 import Hut from './Hut';
 import { clamp } from './math/clamp';
 import { map } from './math/map';
-import { add as addMovie } from './movie';
+import Movie, { add as addMovie } from './movie';
 import {
   add as addParticleCloud,
   rotate as rotatePointCloud,
 } from './particleCloud';
 import './styles/main.css';
-import vertShader from './assets/glsl/bloom.vert';
-import fragShader from './assets/glsl/bloom.frag';
-
-const debug = false;
-const fogDensity = 0.00075;
-const fieldOfView = 60;
-
-const videoPosition = new THREE.Vector3(0, 0, -1000);
-
-const BLOOM_SCENE = 1;
-const bloomLayer = new THREE.Layers();
-bloomLayer.set(BLOOM_SCENE);
-
-const colors = {
-  stars: '#8DFA70',
-  background: 'rgb(0,2,0)',
-};
-
-const bloomParams = {
-  exposure: 0,
-  bloomStrength: 2,
-  bloomThreshold: 0,
-  bloomRadius: 0,
-};
 
 let container,
   controls,
@@ -55,18 +33,42 @@ let container,
   farPlane,
   stats;
 
+const DEBUG = false;
+const FOG_DENSITY = 0.00075;
+const FOV = 60;
+const VIDEO_POS = new THREE.Vector3(0, 0, -1000);
+const BLOOM_SCENE = 1;
+const BLOOM_LAYER = new THREE.Layers();
+
+const colors = {
+  stars: '#8DFA70',
+  background: 'rgb(0,2,0)',
+};
+
+const bloomParams = {
+  exposure: 0,
+  bloomStrength: 2,
+  bloomThreshold: 0,
+  bloomRadius: 0,
+};
+
+// vars for masking blooom shader
+
+BLOOM_LAYER.set(BLOOM_SCENE);
 const darkMaterial = new THREE.MeshBasicMaterial({ color: 'black' });
 const materials = {};
+
 let mouseX = window.innerWidth / 2;
 let mouseY = window.innerHeight / 2;
 let x = 1;
 let y = 1;
 let easing = 0.1;
 
-init();
+// -----
 
 function init() {
   /* --- renderer --- */
+
   container = document.createElement('div');
   document.body.appendChild(container);
   document.body.style.margin = 0;
@@ -81,7 +83,7 @@ function init() {
 
   scene = new THREE.Scene();
   scene.background = colors.background;
-  scene.fog = new THREE.FogExp2(colors.background, fogDensity);
+  scene.fog = new THREE.FogExp2(colors.background, FOG_DENSITY);
 
   /* --- camera --- */
 
@@ -94,14 +96,13 @@ function init() {
   nearPlane = 1;
   farPlane = 2400;
 
-  camera = new THREE.PerspectiveCamera(
-    fieldOfView,
-    aspectRatio,
-    nearPlane,
-    farPlane
-  );
+  camera = new THREE.PerspectiveCamera(FOV, aspectRatio, nearPlane, farPlane);
 
   camera.position.set(0, 0, 1800);
+
+  /* --- orbit controls --- */
+
+  // TODO: add ease to camera dolly (orbit controls doesnt smoothen this natively)
 
   controls = new OrbitControls(camera, container);
 
@@ -116,7 +117,7 @@ function init() {
   controls.maxAzimuthAngle = Math.PI * 0.5;
   controls.minPolarAngle = -Math.PI;
   controls.maxPolarAngle = Math.PI;
-  controls.target = videoPosition;
+  controls.target = VIDEO_POS;
   controls.maxDistance = 3000;
   controls.minDistance = 500;
 
@@ -133,7 +134,7 @@ function init() {
 
   /* --- frame rate stats. useful for debugging. --- */
 
-  if (debug) {
+  if (DEBUG) {
     stats = new Stats();
     stats.domElement.style.position = 'absolute';
     stats.domElement.style.top = '0.5rem';
@@ -142,6 +143,7 @@ function init() {
   }
 
   /* --- post processing --- */
+
   const renderScene = new RenderPass(scene, camera);
 
   const bloomPass = new UnrealBloomPass(
@@ -181,15 +183,19 @@ function init() {
 
   /* --- add objects --- */
 
-  addMovie(scene, videoPosition);
+  Movie.add(scene, VIDEO_POS);
   addParticleCloud(colors, BLOOM_SCENE, scene);
   Hut.add(colors, BLOOM_SCENE, scene);
 
   render();
 }
 
+init();
+
+// -----
+
 function render() {
-  if (debug) stats.update();
+  if (DEBUG) stats.update();
 
   addMouseWiggle();
   Hut.rotate();
@@ -197,18 +203,24 @@ function render() {
 
   requestAnimationFrame(render);
   controls.update();
+
+  // mask bloom pass
   scene.traverse(darkenNonBloomed);
   bloomComposer.render();
   scene.traverse(restoreMaterial);
   finalComposer.render();
 }
 
+// -----
+
 function darkenNonBloomed(obj) {
-  if (obj.isMesh && bloomLayer.test(obj.layers) === false) {
+  if (obj.isMesh && BLOOM_LAYER.test(obj.layers) === false) {
     materials[obj.uuid] = obj.material;
     obj.material = darkMaterial;
   }
 }
+
+// -----
 
 function restoreMaterial(obj) {
   if (materials[obj.uuid]) {
@@ -216,6 +228,8 @@ function restoreMaterial(obj) {
     delete materials[obj.uuid];
   }
 }
+
+// -----
 
 function addMouseWiggle() {
   let targetX = mouseX;
@@ -233,6 +247,8 @@ function addMouseWiggle() {
   camera.position.y = clamp(offY, -10, 10);
 }
 
+// -----
+
 window.onresize = function () {
   const width = window.innerWidth;
   const height = window.innerHeight;
@@ -244,7 +260,7 @@ window.onresize = function () {
   render();
 };
 
-onmousemove = function (e) {
+document.addEventListener('mousemove', (e) => {
   mouseX = e.clientX;
   mouseY = e.clientY;
-};
+});

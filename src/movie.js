@@ -1,21 +1,22 @@
 import * as THREE from 'three';
+import HUD from './HUD';
 
-const playButtonWrapper = document.querySelector('.play-button-wrapper');
-const height = 540;
-const width = 900;
+const HEIGHT = 540;
+const WIDTH = 900;
 
-export function add(scene, position) {
-  const videoElem = document.getElementById('video');
+class Movie {
+  static add(scene, position) {
+    const videoElem = document.getElementById('video');
 
-  playButtonWrapper.onclick = function () {
-    videoElem.play();
-    playButtonWrapper.style.display = 'none';
-  };
+    HUD.hideOnClick();
 
-  const videoTexture = new THREE.VideoTexture(videoElem);
-  const videoGeometry = new THREE.BoxGeometry(width, height, 0.01);
-  const videoMaterial = new THREE.MeshBasicMaterial({ map: videoTexture });
-  const videoMesh = new THREE.Mesh(videoGeometry, videoMaterial);
-  videoMesh.translateZ(position.z);
-  scene.add(videoMesh);
+    const videoTexture = new THREE.VideoTexture(videoElem);
+    const videoGeometry = new THREE.BoxGeometry(WIDTH, HEIGHT, 0.01);
+    const videoMaterial = new THREE.MeshBasicMaterial({ map: videoTexture });
+    const videoMesh = new THREE.Mesh(videoGeometry, videoMaterial);
+    videoMesh.translateZ(position.z);
+    scene.add(videoMesh);
+  }
 }
+
+export default Movie;
