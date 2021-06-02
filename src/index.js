@@ -10,11 +10,8 @@ import vertShader from './assets/glsl/bloom.vert';
 import Hut from './Hut';
 import { clamp } from './math/clamp';
 import { map } from './math/map';
-import Movie, { add as addMovie } from './movie';
-import {
-  add as addParticleCloud,
-  rotate as rotatePointCloud,
-} from './particleCloud';
+import Movie from './Movie';
+import ParticleCloud from './ParticleCloud';
 import './styles/main.css';
 
 let container,
@@ -184,7 +181,7 @@ function init() {
   /* --- add objects --- */
 
   Movie.add(scene, VIDEO_POS);
-  addParticleCloud(colors, BLOOM_SCENE, scene);
+  ParticleCloud.add(colors, BLOOM_SCENE, scene);
   Hut.add(colors, BLOOM_SCENE, scene);
 
   render();
@@ -197,9 +194,10 @@ init();
 function render() {
   if (DEBUG) stats.update();
 
+  // add movement to scene
   addMouseWiggle();
   Hut.rotate();
-  rotatePointCloud();
+  ParticleCloud.rotate();
 
   requestAnimationFrame(render);
   controls.update();
