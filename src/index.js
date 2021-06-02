@@ -5,7 +5,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
-import { add as addHut, rotate as rotateHut } from './hutGLB';
+import Hut from './Hut';
 import { clamp } from './math/clamp';
 import { map } from './math/map';
 import { add as addMovie } from './movie';
@@ -183,7 +183,7 @@ function init() {
 
   addMovie(scene, videoPosition);
   addParticleCloud(colors, BLOOM_SCENE, scene);
-  addHut(colors, BLOOM_SCENE, scene);
+  Hut.add(colors, BLOOM_SCENE, scene);
 
   render();
 }
@@ -192,7 +192,7 @@ function render() {
   if (debug) stats.update();
 
   addMouseWiggle();
-  rotateHut();
+  Hut.rotate();
   rotatePointCloud();
 
   requestAnimationFrame(render);
