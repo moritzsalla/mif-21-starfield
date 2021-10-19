@@ -1,5 +1,3 @@
-# MIF Starfield
-
 Uses the [parcel bundler](https://parceljs.org/).
 
 For more documentation, visit [my blog](https://moritzsalla.info/projects/mif-21).
